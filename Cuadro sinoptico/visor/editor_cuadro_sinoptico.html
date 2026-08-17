@@ -31,8 +31,7 @@
       <div class="content">
         <div class="toolbar toolbar-main">
           <button class="btn-primary" id="btnSaveAs">Guardar .drawio...</button>
-          <button class="btn-secondary" id="btnUploadPy">Cargar archivo .py</button>
-          <input type="file" id="pyFileInput" accept=".py,.txt" style="display: none;" />
+          <button class="btn-secondary" id="btnPasteClipboard">Pegar del portapapeles</button>
         </div>
 
         <div class="tabs">
@@ -274,16 +273,14 @@
         } catch(e) { console.error(e); }
     });
 
-    // Cargar .py
-    document.getElementById("btnUploadPy").addEventListener("click", () => {
-        document.getElementById("pyFileInput").click();
-    });
-    document.getElementById("pyFileInput").addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        const text = await file.text();
-        editor.setValue(text);
-        e.target.value = ""; // Reset input
+    // Pegar del portapapeles
+    document.getElementById("btnPasteClipboard").addEventListener("click", async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) editor.setValue(text);
+        } catch (err) {
+            alert("No se pudo leer el portapapeles. Da permisos o usa Ctrl+V dentro del editor.");
+        }
     });
 
   </script>
