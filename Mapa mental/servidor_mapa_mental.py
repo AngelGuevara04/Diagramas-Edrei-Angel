@@ -651,6 +651,7 @@ class MindMapEditorHandler(SimpleHTTPRequestHandler):
             "/api/images/bing",
             "/api/images/bing/start",
             "/api/images/bing/cancel",
+            "/api/images/save_from_url",
         }
         image_review_routes = {
             "/api/images/review/delete",
@@ -684,6 +685,28 @@ class MindMapEditorHandler(SimpleHTTPRequestHandler):
             return
 
         assert payload is not None
+
+        if route == "/api/images/save_from_url":
+            try:
+                if descargar_imagen_desde_url is None:
+                    raise RuntimeError("No se pudieron cargar utilidades.imagenes.")
+                label = str(payload.get("label", "")).strip()
+                url = str(payload.get("url", "")).strip()
+                if not label or not url:
+                    raise ValueError("label y url son requeridos.")
+                
+                relative_dir, output_dir = resolve_image_dir(payload.get("image_dir"))
+                output_dir.mkdir(parents=True, exist_ok=True)
+                
+                stem = sanitize_filename(label) or "nodo"
+                final_path = descargar_imagen_desde_url(url, output_dir, stem)
+                if final_path:
+                    self.send_json({"ok": True, "path": str(relative_dir / final_path.name).replace("\\", "/")})
+                else:
+                    self.send_json({"ok": False, "error": "No se pudo descargar la imagen"}, status=400)
+            except Exception as exc:
+                self.send_json({"ok": False, "error": str(exc)}, status=400)
+            return
 
         if route == "/api/images/review/delete":
             try:

@@ -164,6 +164,8 @@ def _is_nsfw_candidate_url(url: str) -> bool:
 
 
 def _search_candidates_openverse(query: str) -> list[str]:
+    import time
+    time.sleep(1.0) # Prevent 429 Too Many Requests on bulk downloads
     endpoint = "https://api.openverse.org/v1/images/?" + urllib.parse.urlencode(
         {"q": query, "page_size": 12, "license_type": "all"}
     )

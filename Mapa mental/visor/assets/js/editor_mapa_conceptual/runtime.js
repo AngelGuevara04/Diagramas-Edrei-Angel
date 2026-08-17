@@ -1,4 +1,4 @@
-import { jsToPythonLiteral, normalizeConfig } from "./utils.js";
+﻿import { jsToPythonLiteral, normalizeConfig } from "./utils.js";
 
 export function createRuntimeApi({
   dom,
@@ -14,7 +14,7 @@ export function createRuntimeApi({
   let bingSearchStopRequested = false;
   let activeBingJobId = "";
   const providerLabels = {
-    openverse: "Openverse + Wikimedia",
+    openverse: "Openverse + Wikimedia", puente: "Puente Local (DuckDuckGo)",
     bing: "Bing",
     ddg: "DuckDuckGo"
   };
@@ -665,7 +665,7 @@ export function createRuntimeApi({
       reviewState.suggestionQueryLabel = String(payload.label || "");
       reviewState.suggestionItems = Array.isArray(payload.files) ? payload.files : [];
       if (dom.imageSuggestionMeta) {
-        dom.imageSuggestionMeta.textContent = `${getProviderLabel(useProvider)}: ${reviewState.suggestionItems.length} opción(es) para "${reviewState.suggestionQueryLabel}".`;
+        dom.imageSuggestionMeta.textContent = `${getProviderLabel(useProvider)}: ${reviewState.suggestionItems.length} opciÃ³n(es) para "${reviewState.suggestionQueryLabel}".`;
       }
     } catch (error) {
       reviewState.suggestionItems = [];
@@ -2115,6 +2115,81 @@ window.addEventListener('focus',()=>{if(dirHandle) updateAll();});
     }
   }
 
+  async function runPuenteLocalSearch(requestPayload, maxLabels) {
+    const modalOpened = openBingSearchModal(0, "Puente Local (DuckDuckGo)");
+    try {
+      // 1. Obtener labels del mapa
+      const linkResp = await fetch(/api/images/google-links?mind_map_text=);
+      const linkData = await linkResp.json();
+      if (!linkData.ok) throw new Error(linkData.error || "No se pudieron obtener los nodos.");
+      let labels = linkData.labels;
+      if (maxLabels !== null) labels = labels.slice(0, maxLabels);
+
+      let totals = { success: 0, missing: 0, failed: 0, cache: 0 };
+      const rootContext = (labels.length > 0 && !requestPayload.suffix) ? labels[0] : requestPayload.suffix;
+      
+      updateBingSearchModalProgress({
+         done: false,
+         status: "running",
+         total_labels: labels.length,
+         processed_labels: 0,
+         downloaded_count: 0,
+         missing_count: 0,
+         failed_count: 0,
+         cache_count: 0
+      });
+
+      for (let i = 0; i < labels.length; i++) {
+        if (bingSearchStopRequested) break;
+        const label = labels[i];
+        let urlToDownload = null;
+        try {
+          const query = encodeURIComponent(${label} .trim());
+          const bridgeResp = await fetch(http://localhost:8765/api/search?q=&provider=ddg);
+          const bridgeData = await bridgeResp.json();
+          if (bridgeData.ok && bridgeData.results && bridgeData.results.length > 0) {
+             urlToDownload = bridgeData.results[0];
+          }
+        } catch (e) {
+          console.warn("Error contactando Puente Local", e);
+        }
+
+        if (urlToDownload) {
+          try {
+             const saveResp = await fetch("/api/images/save_from_url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label, url: urlToDownload, image_dir: requestPayload.image_dir })
+             });
+             const saveData = await saveResp.json();
+             if (saveData.ok) totals.success++; else totals.failed++;
+          } catch(e) {
+             totals.failed++;
+          }
+        } else {
+          totals.failed++;
+        }
+
+        updateBingSearchModalProgress({
+           done: false,
+           status: "running",
+           total_labels: labels.length,
+           processed_labels: i + 1,
+           downloaded_count: totals.success,
+           missing_count: 0,
+           failed_count: totals.failed,
+           cache_count: 0
+        });
+      }
+      
+      if (modalOpened) closeBingSearchModal();
+      return { ok: true, status: "completed", downloaded_count: totals.success };
+    } catch(e) {
+      if (modalOpened) closeBingSearchModal();
+      throw e;
+    }
+  }
+
   async function downloadBingImages() {
     if (bingSearchRunning) {
       setStatus("Ya hay una busqueda de imagenes en curso.", "error");
@@ -2156,6 +2231,14 @@ window.addEventListener('focus',()=>{if(dirHandle) updateAll();});
       };
       if (maxLabels !== null) {
         requestPayload.max_labels = maxLabels;
+      }
+
+      if (selectedProvider === "puente") {
+        const finalSnapshot = await runPuenteLocalSearch(requestPayload, maxLabels);
+        await refreshImageGallery();
+        const msg = `Imagenes locales completadas: ${finalSnapshot.downloaded_count}`;
+        setStatus(msg, "success");
+        return;
       }
 
       const startPayload = await startBingSearchJob(requestPayload);
@@ -2308,3 +2391,5 @@ window.addEventListener('focus',()=>{if(dirHandle) updateAll();});
     imageReviewSearchReplacePending
   };
 }
+
+
