@@ -493,6 +493,11 @@ class MindMapEditorHandler(SimpleHTTPRequestHandler):
 
         try:
             mind_map = parse_mind_map_text(mind_map_text)
+            
+            # Automatically use the root node as search context if suffix is empty
+            if not suffix and isinstance(mind_map, dict) and mind_map:
+                suffix = str(list(mind_map.keys())[0]).strip()
+
             labels = collect_labels(mind_map)
             if max_labels is not None:
                 labels = labels[:max_labels]
