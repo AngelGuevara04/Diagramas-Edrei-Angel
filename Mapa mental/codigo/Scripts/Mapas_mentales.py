@@ -464,8 +464,6 @@ def file_to_data_uri(path: Path):
 
 
 def load_images_map(cfg):
-    if "IMAGES_URL_MAP" in cfg:
-        return cfg["IMAGES_URL_MAP"]
     images = {}
     folder = Path(cfg["IMAGE_DIR"])
     if not folder.is_dir():
@@ -974,8 +972,6 @@ def crear_drawio_desde_arbol_radial(arbol, nombre_archivo, cfg):
     place_nodes_and_edges(root_node, root_xml, idgen, images_map, cfg)
 
     xml_bytes = ET.tostring(mxfile, encoding="utf-8", xml_declaration=True)
-    if cfg.get("RETURN_XML", False):
-        return ET.tostring(mxfile, encoding="unicode")
     with open(nombre_archivo, "wb") as f:
         f.write(xml_bytes)
     return os.path.abspath(nombre_archivo).replace("\\", "/")

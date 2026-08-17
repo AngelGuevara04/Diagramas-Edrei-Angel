@@ -322,8 +322,6 @@ def generar_cuadro_sinoptico(chart_data=None, config=None):
     ET.SubElement(root, "mxCell", {"id": "1", "parent": "0"})
     render_node(root, first_label, first_node, LEFT_MARGIN, TOP_MARGIN, level=0)
     ET.indent(mxfile, space="  ")
-    if cfg.get("RETURN_XML", False):
-        return ET.tostring(mxfile, encoding="unicode")
     ET.ElementTree(mxfile).write(out_path, encoding="utf-8", xml_declaration=True)
     return os.path.abspath(out_path).replace("\\", "/")
 

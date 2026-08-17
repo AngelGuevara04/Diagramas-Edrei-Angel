@@ -1,379 +1,91 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Editor de Cuadro Sinóptico</title>
-  <link rel="stylesheet" href="./assets/css/editor_cuadro_sinoptico.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
-  <style>
-    .tabs { display: flex; border-bottom: 1px solid #d7dee8; margin-bottom: 10px; }
-    .tab-btn { background: transparent; border: none; color: #5b6878; padding: 10px 20px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; font-weight: 600; }
-    .tab-btn.active { color: #0b7a6b; border-bottom: 2px solid #0b7a6b; }
-    .tab-content { display: none; height: calc(100% - 50px); overflow-y: auto; }
-    .tab-content.active { display: block; }
-    .CodeMirror { height: 100%; font-size: 14px; border-radius: 4px; }
-    #editorTabContent { height: 60vh; }
-    .export-btn { background-color: #0b7a6b; color: white; margin-left: 10px; }
-  </style>
+  <title>Editor de cuadro sinoptico (CONFIG + chart)</title>
+  <link rel="stylesheet" href="./assets/css/editor_mapa_conceptual.css?v=20260403b">
 </head>
 
 <body>
   <div class="app">
     <section class="panel left">
       <div class="header">
-        <h1>Editor Cuadro Sinóptico</h1>
-        <p>Edita el código o la configuración, la vista previa se actualizará automáticamente.</p>
+        <h1>Editor cuadro sinoptico</h1>
+        <p>Configura el cuadro con formulario visual, genera vista previa y exporta a draw.io.</p>
       </div>
 
       <div class="content">
         <div class="toolbar toolbar-main">
-          <button class="btn-primary" id="btnSaveAs">Guardar .drawio...</button>
-          <button class="btn-secondary" id="btnPasteClipboard">Pegar del portapapeles</button>
-        </div>
-
-        <div class="tabs">
-          <button class="tab-btn active" data-target="editorTab">Editor de Código</button>
-          <button class="tab-btn" data-target="visualTab">Diseño Visual</button>
-          <button class="tab-btn" data-target="iaTab">Asistente IA</button>
-        </div>
-
-        <div id="editorTab" class="tab-content active">
-          <div id="editorTabContent"></div>
-        </div>
-
-        <div id="visualTab" class="tab-content">
-          <div class="group">
-            <div class="group-head">
-              <h2>CONFIG visual</h2>
-            </div>
-            <div id="configForm" class="config-form"></div>
+          <button class="btn-secondary" id="btnPreview">Generar vista previa</button>
+          <button class="btn-primary" id="btnSaveAs">Guardar como...</button>
+          <button class="btn-ghost" id="btnAdvanced">Avanzado</button>
+          <div class="split-actions">
+            <button class="btn-primary" id="btnGenerateMap">Ayuda de estructura</button>
+            <button class="btn-secondary" id="btnPasteMap">Pegar chart</button>
           </div>
         </div>
 
-        <!-- PESTAÑA IA -->
-        <div id="iaTab" class="tab-content">
-          <div class="group">
-            <div class="group-head">
-              <h2>Asistente IA (Gemini Gem)</h2>
-            </div>
-            <p style="font-size: 13px; color: #5b6878; margin-bottom: 12px; line-height: 1.4;">
-              Haz clic en el botón para abrir una conversación con el Gem especializado en cuadros sinópticos.
-              Pídele la estructura que necesitas y luego copia el código que te dé y pégalo en la pestaña <strong>Editor de Código</strong>.
-            </p>
-            <button class="btn-primary" style="width: 100%" id="btnOpenGemini">Abrir Asistente (Gemini)</button>
-          </div>
+        <div class="group">
+          <h2>CONFIG visual</h2>
+          <div id="configForm" class="config-form"></div>
         </div>
 
+        <div id="statusBox" class="status">Inicializando motor Python...</div>
       </div>
     </section>
 
     <section class="panel preview">
       <div class="preview-head">
         <h2>Vista previa draw.io</h2>
-        <div class="meta" id="previewMeta">Sincronizado</div>
+        <div class="meta" id="previewMeta">Sin generar</div>
       </div>
       <div id="graph-container">
-        <iframe id="drawioIframe" src="https://viewer.diagrams.net/?client=1&ui=min" style="width: 100%; height: 100%; border: none;"></iframe>
+        <div id="graph-placeholder">
+          Espera la inicializacion automatica y pulsa <b>Generar vista previa</b>.
+        </div>
       </div>
     </section>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
-  <!-- Script Pyodide -->
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-  
-  <script>
-    const defaultCode = `chart = {
-    "Tema general": {
-        "Tema 1": ["Idea 1", "Idea 2"],
-        "Tema 2": {
-            "Subtema A": ["Punto A", "Punto B"],
-            "Subtema B": {
-                "Detalle 1": ["Explicacion 1"],
-                "Detalle 2": [],
-            },
-        },
-    }
-}`;
+  <div id="advancedModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="advancedTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="advancedTitle">Opciones avanzadas</h2>
+        <button class="btn-ghost btn-close" id="btnCloseAdvanced" aria-label="Cerrar">Cerrar</button>
+      </div>
 
-    let configData = {
-        "PX_PER_CHAR": 7.0,
-        "LINE_H": 17,
-        "PADDING_V": 20,
-        "TOP_MARGIN": 40,
-        "LEFT_MARGIN": 40,
-        "SIBLING_GAP": 10,
-        "SPACE_LABEL_TO_BRACE": 5,
-        "SPACE_BRACE_TO_CONTENT": 5,
-        "BRACE_W": 14,
-        "TOP_MIN_LABEL_W": 100,
-        "MIN_LABEL_W": 10,
-        "MAX_LABEL_W": 250,
-        "MAX_ITEM_W": 250,
-        "BRACE_THICK": 1,
-        "LABEL_ONLY_MIN_H": 30,
-        "BRACE_STYLE": "rounded",
-        "FONT_FAMILY": "Times New Roman",
-        "FONT_COLOR": "#415D66",
-        "BRACE_COLOR": "#4A4861"
-    };
+      <div class="modal-body">
+        <div class="toolbar">
+          <button class="btn-ghost" id="btnInitPyodide">Inicializar motor Python</button>
+          <button class="btn-primary" id="btnSaveOutput">Guardar segun archivo_de_salida</button>
+          <label for="pyFileInput" class="btn-ghost btn-file">Cargar .py (codigo/vista/cuadro_sinoptico.py)</label>
+          <button class="btn-ghost" id="btnPickProjectDir">Elegir carpeta proyecto</button>
+          <button class="btn-warn" id="btnClearPreview">Limpiar preview</button>
+        </div>
 
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.target).classList.add('active');
-        if(btn.dataset.target === 'editorTab') editor.refresh();
-      });
-    });
+        <input id="pyFileInput" type="file" accept=".py">
 
-    const editor = CodeMirror(document.getElementById('editorTabContent'), {
-      value: defaultCode,
-      mode: "python",
-      theme: "monokai",
-      lineNumbers: true,
-      indentUnit: 4,
-    });
+        <div class="group">
+          <div class="group-head">
+            <h2>CONFIG (dict Python)</h2>
+            <button class="btn-ghost" id="btnApplyConfigText">Aplicar CONFIG al formulario</button>
+          </div>
+          <textarea id="configEditor" spellcheck="false"></textarea>
+        </div>
 
-    let pyodide = null;
-    let pyReady = false;
+        <div class="group">
+          <h2>chart (dict Python)</h2>
+          <textarea id="conceptEditor" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    async function initPyodide() {
-        if (pyReady) return;
-        const meta = document.getElementById("previewMeta");
-        meta.innerText = "Inicializando Python en el navegador...";
-        try {
-            pyodide = await loadPyodide();
-
-            const res = await fetch("../../Cuadro sinoptico/codigo/Scripts/Cuadros_sinopticos.py");
-            if (!res.ok) throw new Error("No se pudo cargar Cuadros_sinopticos.py");
-            const scriptCode = await res.text();
-            const safeScript = scriptCode.replace(/if __name__ == "__main__":/g, "if False:");
-            
-            const wrapper = `
-import ast
-import traceback
-
-${safeScript}
-
-def js_generate(data_str, config_dict):
-    try:
-        data_str = data_str.strip()
-        if data_str.startswith("\`\`\`"):
-            lines = data_str.split("\\n")
-            if len(lines) > 1:
-                lines = lines[1:]
-            if lines and lines[-1].strip() == "\`\`\`":
-                lines = lines[:-1]
-            data_str = "\\n".join(lines).strip()
-            
-        data = None
-        
-        # 1. Intentar literal_eval directo
-        try:
-            res = ast.literal_eval(data_str)
-            if isinstance(res, str):
-                res = ast.literal_eval(res.strip())
-            data = res
-        except Exception:
-            pass
-            
-        # 2. Intentar buscar en AST
-        if data is None:
-            try:
-                tree = ast.parse(data_str)
-                for node in tree.body:
-                    if isinstance(node, ast.Assign):
-                        for target in node.targets:
-                            if getattr(target, "id", "") in ("concept_map", "mapa_ejemplo", "chart"):
-                                data = ast.literal_eval(node.value)
-                                break
-            except Exception:
-                pass
-                
-        # 3. Fallback de prefijos
-        if data is None:
-            for prefix in ["concept_map =", "concept_map=", "mapa_ejemplo =", "mapa_ejemplo=", "chart =", "chart="]:
-                if data_str.startswith(prefix):
-                    clean_str = data_str[len(prefix):].strip()
-                    try:
-                        res = ast.literal_eval(clean_str)
-                        if isinstance(res, str):
-                            res = ast.literal_eval(res.strip())
-                        data = res
-                    except Exception:
-                        pass
-                        
-        if data is None:
-            raise ValueError("No se pudo entender el formato del texto ingresado. Asegurate de que sea un formato Python valido.")
-            
-        config_dict["RETURN_XML"] = True
-        xml = generar_cuadro_sinoptico(data, config_dict)
-        return {"ok": True, "xml": xml}
-    except Exception as e:
-        return {"ok": False, "error": str(e), "traceback": traceback.format_exc()}
-`;
-            pyodide.runPython(wrapper);
-            pyReady = true;
-            meta.innerText = "Listo";
-            updatePreview();
-        } catch (e) {
-            meta.innerText = "Error cargando motor";
-            console.error(e);
-        }
-    }
-
-    let debounceTimer;
-    editor.on("change", () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(updatePreview, 800);
-    });
-
-    async function updatePreview() {
-      if (!pyReady) return;
-      const code = editor.getValue();
-      const meta = document.getElementById("previewMeta");
-      meta.innerText = "Generando...";
-      try {
-        pyodide.globals.set("JS_CODE", code);
-        pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
-        const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG)");
-        const res = resProxy.toJs({ dict_converter: Object.fromEntries });
-        resProxy.destroy();
-
-        if (!res.ok) throw new Error(res.error);
-        const xml = res.xml;
-        
-        const iframe = document.getElementById('drawioIframe');
-        iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: xml}), '*');
-        meta.innerText = "Sincronizado";
-      } catch (err) {
-        meta.innerText = "Error";
-        console.error(err);
-      }
-    }
-
-    window.addEventListener('load', initPyodide);
-
-    function buildForm() {
-       const form = document.getElementById("configForm");
-       form.innerHTML = "";
-       
-       const grid = document.createElement("div");
-       grid.style.display = "grid";
-       grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(200px, 1fr))";
-       grid.style.gap = "12px";
-
-       for(const key in configData) {
-          if(key === "PALETTE" || key === "IMAGES_URL_MAP") continue;
-          
-          const fieldDiv = document.createElement("div");
-          fieldDiv.style.display = "flex";
-          fieldDiv.style.flexDirection = "column";
-          fieldDiv.style.gap = "5px";
-
-          const label = document.createElement("label");
-          label.innerText = key;
-          label.style.fontSize = "12px";
-          label.style.fontWeight = "bold";
-          label.style.color = "#5b6878";
-
-          const input = document.createElement("input");
-          input.value = configData[key];
-          
-          if(typeof configData[key] === "boolean") {
-              fieldDiv.style.flexDirection = "row";
-              fieldDiv.style.alignItems = "center";
-              label.style.marginRight = "10px";
-              input.type = "checkbox";
-              input.checked = configData[key];
-              input.style.cursor = "pointer";
-              input.onchange = (e) => { configData[key] = e.target.checked; updatePreview(); };
-          } else if(typeof configData[key] === "string" && configData[key].startsWith("#") && (configData[key].length === 7 || configData[key].length === 4)) {
-              input.type = "color";
-              input.style.padding = "0";
-              input.style.height = "36px";
-              input.style.width = "100%";
-              input.style.border = "1px solid #d7dee8";
-              input.style.borderRadius = "4px";
-              input.style.cursor = "pointer";
-              input.onchange = (e) => {
-                  configData[key] = e.target.value;
-                  updatePreview();
-              };
-          } else {
-              input.type = "text";
-              input.style.padding = "8px";
-              input.style.border = "1px solid #d7dee8";
-              input.style.borderRadius = "4px";
-              input.style.fontSize = "13px";
-              input.onchange = (e) => { 
-                let val = e.target.value;
-                if(!isNaN(val) && val.trim() !== "") val = parseFloat(val);
-                configData[key] = val; 
-                updatePreview(); 
-              };
-          }
-          fieldDiv.appendChild(label);
-          fieldDiv.appendChild(input);
-          grid.appendChild(fieldDiv);
-       }
-       form.appendChild(grid);
-    }
-    buildForm();
-
-    // IA Logic (Gemini Gem link)
-    if(document.getElementById("btnOpenGemini")) {
-      document.getElementById("btnOpenGemini").addEventListener("click", () => {
-        window.open(
-          "https://gemini.google.com/gem/1chS06YwWqIWLPBV7rZFxN6IRbHIJfcsp?usp=sharing",
-          "_blank",
-          "noopener,noreferrer"
-        );
-      });
-    }
-
-    window.addEventListener('message', function(e) {
-        if (e.data == 'ready') {
-            updatePreview();
-        }
-    });
-
-    document.getElementById("btnSaveAs").addEventListener("click", async () => {
-        try {
-            if (!pyReady) return;
-            pyodide.globals.set("JS_CODE", editor.getValue());
-            pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
-            const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG)");
-            const res = resProxy.toJs({ dict_converter: Object.fromEntries });
-            resProxy.destroy();
-
-            if (!res.ok) throw new Error(res.error);
-            const xml = res.xml;
-            const blob = new Blob([xml], { type: "application/xml" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "Cuadro_Sinoptico.drawio";
-            a.click();
-        } catch(e) { console.error(e); alert("Error al guardar: " + e.message); }
-    });
-
-    // Pegar del portapapeles
-    document.getElementById("btnPasteClipboard").addEventListener("click", async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text) editor.setValue(text);
-        } catch (err) {
-            alert("No se pudo leer el portapapeles. Da permisos o usa Ctrl+V dentro del editor.");
-        }
-    });
-
-  </script>
+  <script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
+  <script type="module" src="./assets/js/editor_cuadro_sinoptico.js?v=20260403b"></script>
 </body>
+
 </html>

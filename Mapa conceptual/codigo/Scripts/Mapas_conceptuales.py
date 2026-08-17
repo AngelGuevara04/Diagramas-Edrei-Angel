@@ -1,4 +1,4 @@
-import importlib
+﻿import importlib
 from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 from datetime import datetime, timezone
@@ -94,14 +94,14 @@ DEFAULT_CONCEPT_MAP = [
                     ],
                     [
                         (None, "La"),
-                        ("Robótica", "se divide"),
+                        ("RobÃ³tica", "se divide"),
                         {
-                            "texto": "Tipos",           # nodo donde se abre la bifurcación
-                            "conector": "se divide en",  # conector obligatorio que verás entre Robótica y Tipos
+                            "texto": "Tipos",           # nodo donde se abre la bifurcaciÃ³n
+                            "conector": "se divide en",  # conector obligatorio que verÃ¡s entre RobÃ³tica y Tipos
                             "bifurcaciones": [
-                                [(None,"como"),("Industrial", "opera en"), ("Fábricas", None)],
-                                [(None,"también"),("Doméstica", "trabaja en"), ("Hogar", None)],
-                                [(None, "además"),("Médica", "aplica a"), ("Hospitales", None)],
+                                [(None,"como"),("Industrial", "opera en"), ("FÃ¡bricas", None)],
+                                [(None,"tambiÃ©n"),("DomÃ©stica", "trabaja en"), ("Hogar", None)],
+                                [(None, "ademÃ¡s"),("MÃ©dica", "aplica a"), ("Hospitales", None)],
                             ],
                         },
                     ],
@@ -204,7 +204,7 @@ def make_edge_style(
     shadow_val = label_edge_shadow if label_edge_shadow is not None else CONNECTOR_SHADOW
     text_shadow_val = label_text_shadow if label_text_shadow is not None else CONNECTOR_TEXT_SHADOW
     font_family_val = label_font_family if label_font_family is not None else CONNECTOR_FONT_FAMILY or FONT_FAMILY
-    # Prioriza el tamaño configurado para conectores y permite override puntual.
+    # Prioriza el tamaÃ±o configurado para conectores y permite override puntual.
     if label_font_size is not None:
         font_size_val = label_font_size
     elif globals().get("CONNECTOR_FONT_SIZE") is not None:
@@ -533,7 +533,7 @@ def validate_concept_map_data(concept_map_data):
                                     continue
                                 for sub_e_idx, sub_entry in enumerate(fork_branch):
                                     check_inline_entry(sub_entry, f"{fork_context} -> Elemento #{sub_e_idx+1}")
-                                return
+                            return
 
                         if not isinstance(entry, (tuple, list)):
                             add_error(
@@ -588,13 +588,13 @@ def generar_mapa_conceptual(concept_map_data=None, config=None):
             if is_inline_fork(entry):
                 forks = entry.get("bifurcaciones") or entry.get("forks") or []
                 if idx != len(branch) - 1:
-                    raise ValueError(f"{context_path}: Las bifurcaciones internas deben ser el último elemento de la rama (elemento #{idx+1}).")
+                    raise ValueError(f"{context_path}: Las bifurcaciones internas deben ser el Ãºltimo elemento de la rama (elemento #{idx+1}).")
 
                 text = entry.get("texto") or entry.get("titulo") or ""
                 connector = entry.get("conector")
                 connector_val = connector if connector is not None else pending_label
                 if connector_val is None or connector_val == "":
-                    raise ValueError(f"{context_path}: Falta el campo 'conector' antes del nodo de bifurcación (elemento #{idx+1}).")
+                    raise ValueError(f"{context_path}: Falta el campo 'conector' antes del nodo de bifurcaciÃ³n (elemento #{idx+1}).")
 
                 node_id = add_vertex(text, x, y, style=v_style)
                 add_edge(connector_val, prev_id, node_id, style=e_style, place_label_at_target=True)
@@ -606,7 +606,7 @@ def generar_mapa_conceptual(concept_map_data=None, config=None):
                 for fork_idx, fork_branch in enumerate(forks, start=1):
                     width = max(1, branch_slot_usage(fork_branch))
                     fork_x = start_x + (slot_cursor + (width - 1) / 2) * X_STEP
-                    child_context = f"{context_path} -> Bifurcación (elemento #{idx+1}) -> Rama hija #{fork_idx}"
+                    child_context = f"{context_path} -> BifurcaciÃ³n (elemento #{idx+1}) -> Rama hija #{fork_idx}"
                     # Se pasa el conector de la bifurcacion como etiqueta inicial hacia la primera caja hija.
                     draw_branch(
                         fork_branch,
@@ -686,7 +686,7 @@ def generar_mapa_conceptual(concept_map_data=None, config=None):
 
                 slot_cursor = 0
                 for b_idx, branch in enumerate(subtitle.get("ramas", []), start=1):
-                    branch_context = f"Grupo '{group.get('titulo_principal', '')}' -> Subtítulo '{sub_title}' -> Rama #{b_idx}"
+                    branch_context = f"Grupo '{group.get('titulo_principal', '')}' -> SubtÃ­tulo '{sub_title}' -> Rama #{b_idx}"
                     if isinstance(branch, dict) and not is_inline_fork(branch):
                         # Color del sub-tema anidado: propio si se pide, o el del subtitulo (si aplica),
                         # de lo contrario toma el siguiente de la paleta.
@@ -751,13 +751,9 @@ def generar_mapa_conceptual(concept_map_data=None, config=None):
 
     render_concept_map(data)
 
-    xml_content = prettify(mxfile)
-    if cfg.get("RETURN_XML", False):
-        return xml_content
-
     out_path = resolve_output_path(cfg.get("OUTPUT_FILE", "Mapa_conceptual.drawio"))
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write(xml_content)
+        f.write(prettify(mxfile))
     return os.path.abspath(out_path).replace("\\", "/")
 
 
