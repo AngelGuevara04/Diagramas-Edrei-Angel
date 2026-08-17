@@ -107,6 +107,27 @@ export function bootEditorMapaConceptual() {
   cmEditor.on("change", () => {
     scheduleAutoPreview();
   });
+
+  // Tabs Logic
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active', 'btn-secondary');
+        b.classList.add('btn-ghost');
+      });
+      e.target.classList.add('active', 'btn-secondary');
+      e.target.classList.remove('btn-ghost');
+      
+      document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+      const targetId = e.target.getAttribute('data-tab');
+      document.getElementById(targetId).style.display = 'block';
+      
+      if (targetId === 'tab-code') {
+        setTimeout(() => cmEditor.refresh(), 10);
+      }
+    });
+  });
+
   configFormApi.renderConfigForm();
 
   dom.pyFileInput.addEventListener("change", async () => {
@@ -211,3 +232,4 @@ export function bootEditorMapaConceptual() {
     runtimeApi.initPy();
   });
 }
+

@@ -29,7 +29,13 @@
           </div>
         </div>
 
-        <!-- <p class="small">
+        <div class="tabs-nav" style="display: flex; gap: 8px; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+          <button class="btn-secondary tab-btn active" data-tab="tab-visual" style="flex: 1;">Diseño Visual</button>
+          <button class="btn-ghost tab-btn" data-tab="tab-code" style="flex: 1;">Código (Live)</button>
+        </div>
+
+        <div id="tab-visual" class="tab-content">
+<!-- <p class="small">
           Recomendado: abrir desde <code>http://localhost</code> (ejemplo:
           <code>iniciar_servidor_python.bat</code> en la raiz de <code>Mapa conceptual</code>).
         </p> -->
@@ -58,7 +64,7 @@
           <!-- <p class="small">Requiere servidor local con <code>GEMINI_API_KEY</code>.</p> -->
         </div>
 
-        <div id="statusBox" class="status">Inicializando motor Python...</div>
+        </div> <!-- End tab-code -->`n        <div id="statusBox" class="status">Inicializando motor Python...</div>
       </div>
     </section>
 
@@ -117,3 +123,4 @@
 </body>
 
 </html>
+
