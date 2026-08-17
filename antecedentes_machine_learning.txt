@@ -1,0 +1,31 @@
+# Formato: fecha | titulo | query(opcional)
+1763 | Teorema de Bayes | Thomas Bayes portrait
+1805 | Minimos cuadrados de Legendre | Adrien-Marie Legendre portrait
+1812 | Laplace consolida la probabilidad moderna | Pierre-Simon Laplace portrait
+1854 | Algebra booleana | George Boole portrait
+1906 | Cadenas de Markov | Andrey Markov portrait
+1936 | Maquina universal de Turing | Alan Turing portrait
+1943 | Neurona artificial de McCulloch y Pitts | McCulloch Pitts neural network paper
+1948 | Teoria de la informacion de Shannon | Claude Shannon portrait
+1949 | Regla de Hebb | Donald Hebb portrait
+1950 | Test de Turing | Alan Turing test
+1951 | SNARC, una de las primeras redes neuronales | Marvin Minsky SNARC
+1952 | Programa de damas de Arthur Samuel | Arthur Samuel IBM checkers
+1956 | Conferencia de Dartmouth | Dartmouth conference artificial intelligence
+1957 | Perceptron de Rosenblatt | Frank Rosenblatt perceptron
+1959 | Arthur Samuel populariza el termino machine learning | Arthur Samuel machine learning
+1960 | ADALINE y MADALINE | ADALINE MADALINE Widrow Hoff
+1965 | DENDRAL y el auge del razonamiento simbolico | DENDRAL expert system
+1967 | Vecinos mas cercanos | nearest neighbor rule Cover Hart
+1969 | Critica a los perceptrones | perceptrons Minsky Papert book
+1974 | Primer invierno de la IA | AI winter history
+1977 | Algoritmo EM | expectation maximization algorithm history
+1982 | Redes de Hopfield | John Hopfield network
+1984 | Arboles CART | CART decision tree Breiman
+1986 | Retropropagacion moderna | backpropagation Rumelhart Hinton Williams
+1989 | Primeras CNN aplicadas a vision | Yann LeCun convolutional neural network
+1995 | Maquinas de vectores de soporte | support vector machine Vapnik
+1997 | LSTM | LSTM Hochreiter Schmidhuber
+1998 | LeNet-5 | LeNet-5 Yann LeCun
+2001 | Random Forests | Random Forests Breiman
+2006 | Deep Belief Nets y renacimiento del deep learning | deep belief nets Hinton

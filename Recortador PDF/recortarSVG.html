@@ -1,0 +1,1697 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Recortador de SVG a PDF</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            height: 100vh;
+            display: flex;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+
+        .app {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 320px;
+            flex: 0 0 320px;
+            min-width: 320px;
+            flex-shrink: 0;
+            padding: 16px;
+            border-right: 1px solid #1f2937;
+            background: #020617;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .sidebar h1 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .sidebar small {
+            color: #9ca3af;
+        }
+
+        .panel {
+            background: #020617;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #1f2937;
+        }
+
+        .panel h2 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #e5e7eb;
+        }
+
+        .panel p {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            font-size: 12px;
+        }
+
+        button {
+            cursor: pointer;
+            border-radius: 9999px;
+            padding: 8px 14px;
+            border: 1px solid #1f2937;
+            background: #111827;
+            color: #e5e7eb;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s, transform 0.1s, box-shadow 0.1s;
+        }
+
+        button.primary {
+            background: #2563eb;
+            border-color: #1d4ed8;
+        }
+
+        button.danger {
+            background: #b91c1c;
+            border-color: #7f1d1d;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+            transform: none;
+            box-shadow: none;
+        }
+
+        button:not(:disabled):hover {
+            background: #1f2937;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+
+        button.primary:not(:disabled):hover {
+            background: #1d4ed8;
+        }
+
+        button.danger:not(:disabled):hover {
+            background: #991b1b;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .regions-list {
+            max-height: 40vh;
+            overflow-y: auto;
+            margin-top: 6px;
+            padding-right: 4px;
+        }
+
+        .regions-list ol {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 12px;
+        }
+
+        .regions-list li {
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 10px;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .regions-list li:hover {
+            background: #111827;
+        }
+
+        .regions-list li.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        .sidebar.show-regions-only .panel:not(.regions-list) {
+            display: none;
+        }
+
+        .sidebar.show-regions-only .regions-list {
+            flex: 1;
+        }
+
+        .sidebar.show-letter-only .panel:not(.letter-panel) {
+            display: none;
+        }
+
+        .sidebar.show-letter-only .letter-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 6px;
+        }
+
+        .item-actions {
+            display: inline-flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .item-actions button {
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        .inline-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .inline-field input[type="range"] {
+            flex: 1;
+        }
+
+        .inline-field input[type="number"] {
+            width: 64px;
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            background: #0b1221;
+            color: #e5e7eb;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 8px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .main-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 4px 4px 0;
+        }
+
+        .main-header span {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+
+        .zoom-controls {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .progress {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .progress.show {
+            display: inline-flex;
+        }
+
+        .progress-bar {
+            width: 180px;
+            height: 6px;
+            border-radius: 9999px;
+            background: #1f2937;
+            overflow: hidden;
+            border: 1px solid #111827;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2563eb, #22c55e);
+            transition: width 0.1s ease-out;
+        }
+
+        .viewport-wrapper {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            border-radius: 12px;
+            background: radial-gradient(circle at top left, #1d283a, #020617 55%);
+            border: 1px solid #1f2937;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+        }
+
+        #svgContainer {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            max-width: 100%;
+            max-height: 100%;
+            position: relative;
+            overflow: auto;
+            background: repeating-conic-gradient(#020617 0 25%, #030712 0 50%) 50% / 20px 20px;
+        }
+
+        #svgContainer svg {
+            background: transparent;
+        }
+
+        .overlay-label {
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 11px;
+            color: #9ca3af;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 4px 8px;
+            border-radius: 9999px;
+            border: 1px solid #1f2937;
+        }
+
+        .crop-rect {
+            fill: rgba(59, 130, 246, 0.18);
+            stroke: #2563eb;
+            stroke-width: 1.2;
+            stroke-dasharray: 4 2;
+        }
+
+        .crop-rect.drawing {
+            fill: rgba(59, 130, 246, 0.08);
+            stroke-dasharray: 2 2;
+        }
+
+        .crop-label {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-size: 10px;
+            fill: #e5e7eb;
+            paint-order: stroke;
+            stroke: #0f172a;
+            stroke-width: 0.9;
+            stroke-linejoin: round;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111827;
+            color: #e5e7eb;
+            padding: 8px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            border: 1px solid #1f2937;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            z-index: 40;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 260px;
+                min-width: 260px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            body {
+                flex-direction: column;
+            }
+
+            .app {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #1f2937;
+            }
+
+            .viewport-wrapper {
+                height: calc(100vh - 260px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div>
+                <h1>Recortador SVG a PDF</h1>
+                <small>Marca regiones rectangulares sobre un SVG grande y expórtalas como páginas. Tienes que convertir
+                    el el archivo drawio en PDF y luego en SVG.</small>
+            </div>
+            <div class="button-row">
+                <button id="showRegionsBtn" class="primary">Ver solo recortes</button>
+            </div>
+
+            <div class="panel">
+                <h2>1. Cargar SVG</h2>
+                <p>Selecciona un archivo SVG vectorial.</p>
+                <input type="file" id="fileInput" accept=".svg,image/svg+xml" />
+                <p class="hint">
+                    Si tu archivo original es PDF, conviértelo primero a SVG (por ejemplo con Inkscape, Ghostscript,
+                    etc.).
+                </p>
+            </div>
+
+            <div class="panel">
+                <h2>2. Dibujar recortes</h2>
+                <p>
+                    Haz clic y arrastra sobre el área del SVG para crear un rectángulo de recorte.
+                </p>
+                <p class="hint">
+                    Cada recorte será una hoja del PDF resultante. Con Ctrl mantenido puedes mover o redimensionar un
+                    recorte existente, y mientras esté presionado no se crearán recortes nuevos.
+                </p>
+                <div class="button-row">
+                    <button id="clearRectsBtn" class="danger" disabled>Limpiar recortes</button>
+                    <button id="openLetterModeBtn">Tamaños carta</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>3. Exportar</h2>
+                <p>Exporta todos los recortes como:</p>
+                <div class="button-row">
+                    <!-- <button id="exportSvgsBtn" class="primary" disabled>
+                        SVG individuales -->
+                    </button>
+                    <button id="exportPdfBtn" class="primary" disabled>
+                        PDF con todas las hojas
+                    </button>
+                </div>
+                <div class="inline-field">
+                    <label for="qualityRange">Calidad exportación</label>
+                    <input type="range" id="qualityRange" min="0.5" max="4" step="0.25" value="1.5" />
+                    <input type="number" id="qualityNumber" min="0.5" max="4" step="0.25" value="1.5" />
+                </div>
+                <div class="inline-field">
+                    <label for="pdfFormat">Formato PDF</label>
+                    <select id="pdfFormat">
+                        <option value="jpeg" selected>JPEG (comprimido)</option>
+                        <option value="png">PNG (sin pérdida)</option>
+                    </select>
+                </div>
+                <div class="inline-field">
+                    <label for="jpegQualityRange">Calidad JPG</label>
+                    <input type="range" id="jpegQualityRange" min="0.5" max="0.95" step="0.05" value="0.85" />
+                    <input type="number" id="jpegQualityNumber" min="0.5" max="0.95" step="0.05" value="0.85" />
+                </div>
+                <p class="hint">1 = tamaño justo de página. Usa 2-3 para más nitidez (archivos más pesados).</p>
+                <p class="hint">
+                    SVG mantiene la calidad vectorial. El PDF también será vectorial si el contenido original lo era.
+                </p>
+            </div>
+
+            <div class="panel regions-list">
+                <h2>Recortes (Hojas)</h2>
+                <p class="hint">Haz clic en una hoja para resaltarla. Puedes reordenar o eliminar.</p>
+                <div class="button-row">
+                    <button id="saveConfigBtn" class="primary" disabled>Guardar config</button>
+                    <button id="loadConfigBtn">Cargar config</button>
+                    <input type="file" id="configFileInput" accept=".json" style="display:none" />
+                </div>
+                <div class="button-row">
+                    <button id="backSidebarBtn" class="danger" style="display:none">Volver</button>
+                </div>
+                <ol id="regionsList"></ol>
+            </div>
+
+            <div class="panel letter-panel">
+                <h2>Tamaños carta</h2>
+                <p class="hint">Configura recortes con proporción carta 8.5x11 in.</p>
+                <div class="inline-field">
+                    <input type="checkbox" id="lockLetterAspectToggle" />
+                    <label for="lockLetterAspectToggle">Bloquear proporción carta al dibujar/redimensionar</label>
+                </div>
+                <div class="inline-field">
+                    <input type="checkbox" id="fixedLetterClickToggle" />
+                    <label for="fixedLetterClickToggle">Colocar recortes carta con un clic (sin arrastrar)</label>
+                </div>
+                <div class="inline-field">
+                    <label for="fixedLetterWidth">Ancho recorte (px)</label>
+                    <input type="number" id="fixedLetterWidth" min="100" max="4000" step="10" value="816" />
+                </div>
+                <p class="hint">Altura se calcula con proporción carta (11/8.5). Por defecto 816x1056 (~8.5x11 in a
+                    96dpi).</p>
+                <div class="button-row">
+                    <button id="backLetterBtn" class="danger">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="main-header">
+                <span id="statusLabel">Carga un SVG para empezar.</span>
+                <div class="zoom-controls">
+                    <button id="zoomOutBtn" title="Alejar">-</button>
+                    <button id="zoomResetBtn" title="Reset zoom">100%</button>
+                    <button id="zoomInBtn" title="Acercar">+</button>
+                </div>
+                <div id="exportProgress" class="progress">
+                    <span id="exportProgressText">Exportando...</span>
+                    <div class="progress-bar">
+                        <div id="exportProgressFill" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="viewport-wrapper">
+                <div id="svgContainer"></div>
+                <div class="overlay-label">
+                    Arrastra con el mouse para crear un recorte. Rueda: zoom. Clic derecho: mover.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/svg2pdf.js@2.6.0/dist/svg2pdf.umd.min.js"></script>
+
+    <script>
+        (function () {
+            const svgNS = "http://www.w3.org/2000/svg";
+
+            const fileInput = document.getElementById("fileInput");
+            const svgContainer = document.getElementById("svgContainer");
+            const regionsListEl = document.getElementById("regionsList");
+            const statusLabel = document.getElementById("statusLabel");
+            const clearRectsBtn = document.getElementById("clearRectsBtn");
+            const exportSvgsBtn = document.getElementById("exportSvgsBtn");
+            const exportPdfBtn = document.getElementById("exportPdfBtn");
+            const toastEl = document.getElementById("toast");
+            const qualityRange = document.getElementById("qualityRange");
+            const qualityNumber = document.getElementById("qualityNumber");
+            const pdfFormatSelect = document.getElementById("pdfFormat");
+            const jpegQualityRange = document.getElementById("jpegQualityRange");
+            const jpegQualityNumber = document.getElementById("jpegQualityNumber");
+            const saveConfigBtn = document.getElementById("saveConfigBtn");
+            const loadConfigBtn = document.getElementById("loadConfigBtn");
+            const configFileInput = document.getElementById("configFileInput");
+            const showRegionsBtn = document.getElementById("showRegionsBtn");
+            const backSidebarBtn = document.getElementById("backSidebarBtn");
+            const openLetterModeBtn = document.getElementById("openLetterModeBtn");
+            const lockLetterAspectToggle = document.getElementById("lockLetterAspectToggle");
+            const fixedLetterClickToggle = document.getElementById("fixedLetterClickToggle");
+            const fixedLetterWidthInput = document.getElementById("fixedLetterWidth");
+            const backLetterBtn = document.getElementById("backLetterBtn");
+            const zoomInBtn = document.getElementById("zoomInBtn");
+            const zoomOutBtn = document.getElementById("zoomOutBtn");
+            const zoomResetBtn = document.getElementById("zoomResetBtn");
+            const exportProgressEl = document.getElementById("exportProgress");
+            const exportProgressText = document.getElementById("exportProgressText");
+            const exportProgressFill = document.getElementById("exportProgressFill");
+
+            let svgRoot = null;
+            let regions = [];
+            let drawing = false;
+            let startPoint = null;
+            let currentRect = null;
+            let currentLabel = null;
+            let activeRegionId = null;
+            let regionCounter = 0;
+            let zoom = 1;
+            let pan = { x: 0, y: 0 };
+            let isPanning = false;
+            let panStart = { x: 0, y: 0 };
+            let panOrigin = { x: 0, y: 0 };
+            let draggingRegion = null;
+            let resizingRegion = null;
+            let sidebarMode = "default";
+            const LETTER_WIDTH_DEFAULT = 816;
+            const LETTER_HEIGHT_DEFAULT = 1056;
+            const LETTER_RATIO = LETTER_HEIGHT_DEFAULT / LETTER_WIDTH_DEFAULT;
+            const MAX_SVG_DIMENSION = 3000;
+            const MAX_RENDER_MP = 24; // limite de megapixeles para raster (protege de cuelgues)
+            const MIN_SCALE_QUALITY = 0.2;
+            const RASTER_TIMEOUT_MS = 15000;
+            let lockLetterAspect = false;
+            let fixedLetterPlacement = false;
+            let fixedLetterWidth = LETTER_WIDTH_DEFAULT;
+            let history = [];
+            let interactionSnapshot = null;
+            let isRestoring = false;
+            let svgScaleFactor = 1;
+            let originalSvgSize = { width: 0, height: 0 };
+
+            function showToast(msg) {
+                toastEl.textContent = msg;
+                toastEl.classList.add("show");
+                setTimeout(() => {
+                    toastEl.classList.remove("show");
+                }, 2200);
+            }
+
+            function clampQuality(value) {
+                const num = parseFloat(value);
+                if (Number.isNaN(num)) return 1;
+                return Math.min(4, Math.max(0.5, num));
+            }
+
+            function parseDimension(value) {
+                if (!value) return null;
+                const num = parseFloat(value);
+                return Number.isFinite(num) && num > 0 ? num : null;
+            }
+
+            function getSvgSize(svgEl) {
+                let width = parseDimension(svgEl.getAttribute("width"));
+                let height = parseDimension(svgEl.getAttribute("height"));
+                const vb = svgEl.getAttribute("viewBox");
+                if ((!width || !height) && vb) {
+                    const parts = vb.split(/\s+/).map(Number);
+                    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+                        width = width || parts[2];
+                        height = height || parts[3];
+                    }
+                }
+                if (!width || !height) {
+                    width = 1200;
+                    height = 800;
+                }
+                return { width, height };
+            }
+
+            function applySvgScale(svgEl) {
+                const { width, height } = getSvgSize(svgEl);
+                originalSvgSize = { width, height };
+
+                if (!svgEl.getAttribute("viewBox")) {
+                    svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+                }
+
+                const maxDim = Math.max(width, height);
+                svgScaleFactor = maxDim > MAX_SVG_DIMENSION ? MAX_SVG_DIMENSION / maxDim : 1;
+
+                svgEl.setAttribute("width", width * svgScaleFactor);
+                svgEl.setAttribute("height", height * svgScaleFactor);
+
+                return svgScaleFactor;
+            }
+
+            function syncQualityInputs(val) {
+                const clamped = clampQuality(val);
+                qualityRange.value = clamped;
+                qualityNumber.value = clamped;
+            }
+
+            function getQualityFactor() {
+                return clampQuality(qualityRange.value);
+            }
+
+            function clampJpegQuality(value) {
+                const num = parseFloat(value);
+                if (Number.isNaN(num)) return 0.85;
+                return Math.min(0.95, Math.max(0.5, num));
+            }
+
+            function clampLetterWidth(value) {
+                const num = parseFloat(value);
+                if (Number.isNaN(num)) return LETTER_WIDTH_DEFAULT;
+                return Math.min(4000, Math.max(100, num));
+            }
+
+            function captureSnapshot() {
+                return regions.map(r => ({
+                    x: r.x,
+                    y: r.y,
+                    width: r.width,
+                    height: r.height
+                }));
+            }
+
+            function restoreSnapshot(snapshot) {
+                isRestoring = true;
+                clearRegionsOnly();
+                regionCounter = 0;
+                snapshot.forEach(data => addRegionFromData(data));
+                updateRegionsList();
+                if (regions[0]) highlightRegion(regions[0].id);
+                isRestoring = false;
+            }
+
+            function pushHistory(snapshot) {
+                if (!snapshot) return;
+                history.push(snapshot);
+                if (history.length > 50) history.shift();
+            }
+
+            function updateProgress(percent, text) {
+                if (!exportProgressEl) return;
+                exportProgressEl.classList.add("show");
+                exportProgressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+                if (text) exportProgressText.textContent = text;
+            }
+
+            function hideProgress(delay = 300) {
+                if (!exportProgressEl) return;
+                setTimeout(() => {
+                    exportProgressEl.classList.remove("show");
+                    exportProgressFill.style.width = "0%";
+                }, delay);
+            }
+
+            function syncJpegQualityInputs(val) {
+                const clamped = clampJpegQuality(val);
+                jpegQualityRange.value = clamped;
+                jpegQualityNumber.value = clamped;
+            }
+
+            function getJpegQuality() {
+                return clampJpegQuality(jpegQualityRange.value);
+            }
+
+            function capRasterQuality(width, height, requestedQuality) {
+                const maxArea = MAX_RENDER_MP * 1_000_000;
+                const desiredArea = width * height * requestedQuality * requestedQuality;
+                if (desiredArea <= maxArea) return requestedQuality;
+                const factor = Math.sqrt(maxArea / desiredArea);
+                return Math.max(MIN_SCALE_QUALITY, requestedQuality * factor);
+            }
+
+            function waitNextFrame() {
+                return new Promise(resolve => requestAnimationFrame(resolve));
+            }
+
+            function setButtonsEnabled(enabled) {
+                if (clearRectsBtn) clearRectsBtn.disabled = !enabled;
+                if (exportSvgsBtn) exportSvgsBtn.disabled = !enabled;
+                if (exportPdfBtn) exportPdfBtn.disabled = !enabled;
+                if (saveConfigBtn) saveConfigBtn.disabled = !enabled;
+            }
+
+            function applyViewTransform() {
+                if (!svgRoot) return;
+                svgRoot.style.transformOrigin = "top left";
+                svgRoot.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+            }
+
+            function setZoom(newZoom, center) {
+                if (!svgRoot) return;
+                const minZoom = 0.25;
+                const maxZoom = 5;
+                const clamped = Math.min(maxZoom, Math.max(minZoom, newZoom));
+                const rect = svgContainer.getBoundingClientRect();
+                const cx = center ? center.x : rect.width / 2;
+                const cy = center ? center.y : rect.height / 2;
+
+                const worldX = (cx - pan.x) / zoom;
+                const worldY = (cy - pan.y) / zoom;
+
+                zoom = clamped;
+                pan.x = cx - worldX * zoom;
+                pan.y = cy - worldY * zoom;
+                applyViewTransform();
+                zoomResetBtn.textContent = `${Math.round(zoom * 100)}%`;
+            }
+
+            function onContextMenu(evt) {
+                evt.preventDefault();
+            }
+
+            function resetAll() {
+                regions.forEach(r => {
+                    r.rectEl?.remove();
+                    r.labelEl?.remove();
+                });
+                regions = [];
+                regionsListEl.innerHTML = "";
+                activeRegionId = null;
+                setButtonsEnabled(false);
+                zoom = 1;
+                pan = { x: 0, y: 0 };
+                applyViewTransform();
+                history = [];
+                interactionSnapshot = null;
+            }
+
+            function svgPointFromEvent(evt) {
+                if (!svgRoot) return { x: 0, y: 0 };
+                const pt = svgRoot.createSVGPoint();
+                pt.x = evt.clientX;
+                pt.y = evt.clientY;
+                const ctm = svgRoot.getScreenCTM();
+                if (!ctm) return { x: 0, y: 0 };
+                const inv = ctm.inverse();
+                const p = pt.matrixTransform(inv);
+                return { x: p.x, y: p.y };
+            }
+
+            function renumberRegions() {
+                regions.forEach((region, index) => {
+                    region.labelEl.textContent = `Hoja ${index + 1}`;
+                });
+                setButtonsEnabled(regions.length > 0);
+                if (!regions.length) {
+                    activeRegionId = null;
+                }
+            }
+
+            function updateRegionsList() {
+                regionsListEl.innerHTML = "";
+                regions.forEach((region, index) => {
+                    const li = document.createElement("li");
+                    li.dataset.regionId = region.id;
+
+                    const info = document.createElement("div");
+                    info.textContent = `Hoja ${index + 1} · x=${region.x.toFixed(1)}, y=${region.y.toFixed(1)}, w=${region.width.toFixed(1)}, h=${region.height.toFixed(1)}`;
+
+                    const actions = document.createElement("div");
+                    actions.className = "item-actions";
+
+                    const upBtn = document.createElement("button");
+                    upBtn.textContent = "↑";
+                    upBtn.title = "Mover arriba";
+                    upBtn.disabled = index === 0;
+                    upBtn.addEventListener("click", (evt) => {
+                        evt.stopPropagation();
+                        moveRegion(index, -1);
+                    });
+
+                    const downBtn = document.createElement("button");
+                    downBtn.textContent = "↓";
+                    downBtn.title = "Mover abajo";
+                    downBtn.disabled = index === regions.length - 1;
+                    downBtn.addEventListener("click", (evt) => {
+                        evt.stopPropagation();
+                        moveRegion(index, 1);
+                    });
+
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.textContent = "✕";
+                    deleteBtn.classList.add("danger");
+                    deleteBtn.title = "Eliminar hoja";
+                    deleteBtn.addEventListener("click", (evt) => {
+                        evt.stopPropagation();
+                        deleteRegion(index);
+                    });
+
+                    actions.append(upBtn, downBtn, deleteBtn);
+                    li.append(info, actions);
+
+                    if (region.id === activeRegionId) {
+                        li.classList.add("active");
+                    }
+                    li.addEventListener("click", () => {
+                        highlightRegion(region.id);
+                    });
+                    regionsListEl.appendChild(li);
+                });
+            } function highlightRegion(id) {
+                activeRegionId = id;
+                regions.forEach(r => {
+                    const isActive = id !== null && r.id === id;
+                    r.rectEl.setAttribute("stroke-width", isActive ? 2 : 1.2);
+                    r.rectEl.setAttribute("stroke", isActive ? "#fbbf24" : "#2563eb");
+                });
+                updateRegionsList();
+            }
+
+            function updateRegionElements(region) {
+                region.rectEl.setAttribute("x", region.x);
+                region.rectEl.setAttribute("y", region.y);
+                region.rectEl.setAttribute("width", region.width);
+                region.rectEl.setAttribute("height", region.height);
+                region.labelEl.setAttribute("x", region.x + 4);
+                region.labelEl.setAttribute("y", region.y + 12);
+            }
+
+            function getHandleAtPoint(region, point, tolerance = 6) {
+                const x1 = region.x;
+                const y1 = region.y;
+                const x2 = region.x + region.width;
+                const y2 = region.y + region.height;
+                const near = (a, b) => Math.abs(a - b) <= tolerance;
+                const withinX = point.x >= x1 - tolerance && point.x <= x2 + tolerance;
+                const withinY = point.y >= y1 - tolerance && point.y <= y2 + tolerance;
+                if (!withinX || !withinY) return null;
+
+                const atLeft = near(point.x, x1);
+                const atRight = near(point.x, x2);
+                const atTop = near(point.y, y1);
+                const atBottom = near(point.y, y2);
+
+                if (atLeft && atTop) return "nw";
+                if (atRight && atTop) return "ne";
+                if (atLeft && atBottom) return "sw";
+                if (atRight && atBottom) return "se";
+                if (atLeft) return "w";
+                if (atRight) return "e";
+                if (atTop) return "n";
+                if (atBottom) return "s";
+                return "inside";
+            }
+
+            function findRegionAtPoint(point) {
+                for (let i = regions.length - 1; i >= 0; i--) {
+                    const r = regions[i];
+                    if (
+                        point.x >= r.x &&
+                        point.x <= r.x + r.width &&
+                        point.y >= r.y &&
+                        point.y <= r.y + r.height
+                    ) {
+                        return r;
+                    }
+                }
+                return null;
+            }
+
+            function setSidebarMode(mode) {
+                sidebarMode = mode;
+                const sidebarEl = document.querySelector(".sidebar");
+                sidebarEl?.classList.toggle("show-regions-only", sidebarMode === "regions");
+                sidebarEl?.classList.toggle("show-letter-only", sidebarMode === "letter");
+                backSidebarBtn.style.display = sidebarMode === "regions" ? "inline-flex" : "none";
+                backLetterBtn.style.display = sidebarMode === "letter" ? "inline-flex" : "none";
+            }
+
+            function moveRegion(index, delta) {
+                if (!isRestoring) pushHistory(captureSnapshot());
+                const newIndex = index + delta;
+                if (newIndex < 0 || newIndex >= regions.length) return;
+                const [item] = regions.splice(index, 1);
+                regions.splice(newIndex, 0, item);
+                renumberRegions();
+                if (activeRegionId) {
+                    highlightRegion(activeRegionId);
+                } else {
+                    updateRegionsList();
+                }
+            }
+
+            function deleteRegion(index) {
+                pushHistory(captureSnapshot());
+                const [removed] = regions.splice(index, 1);
+                if (!removed) return;
+                removed.rectEl?.remove();
+                removed.labelEl?.remove();
+                if (removed.id === activeRegionId) {
+                    activeRegionId = null;
+                }
+                renumberRegions();
+                if (activeRegionId) {
+                    highlightRegion(activeRegionId);
+                } else {
+                    updateRegionsList();
+                }
+                setButtonsEnabled(regions.length > 0);
+                showToast("Hoja eliminada.");
+            }
+
+            function addRegionFromRect(rectEl, labelEl) {
+                pushHistory(captureSnapshot());
+                const x = parseFloat(rectEl.getAttribute("x") || "0");
+                const y = parseFloat(rectEl.getAttribute("y") || "0");
+                const w = parseFloat(rectEl.getAttribute("width") || "0");
+                const h = parseFloat(rectEl.getAttribute("height") || "0");
+                if (w <= 1 || h <= 1) {
+                    rectEl.remove();
+                    labelEl.remove();
+                    return;
+                }
+                const id = ++regionCounter;
+                rectEl.classList.remove("drawing");
+                rectEl.dataset.regionId = id;
+                labelEl.dataset.regionId = id;
+                regions.push({
+                    id,
+                    x, y, width: w, height: h,
+                    rectEl,
+                    labelEl
+                });
+                renumberRegions();
+                highlightRegion(id);
+            }
+
+            function attachDrawingHandlers() {
+                if (!svgRoot) return;
+
+                svgRoot.addEventListener("mousedown", onMouseDown);
+                svgRoot.addEventListener("mousemove", onMouseMove);
+                svgRoot.addEventListener("mouseup", onMouseUp);
+                svgRoot.addEventListener("mouseleave", onMouseUp);
+                svgContainer.addEventListener("wheel", onWheel, { passive: false });
+                svgContainer.addEventListener("contextmenu", onContextMenu);
+            }
+
+            function detachDrawingHandlers(oldSvg) {
+                if (!oldSvg) return;
+                oldSvg.removeEventListener("mousedown", onMouseDown);
+                oldSvg.removeEventListener("mousemove", onMouseMove);
+                oldSvg.removeEventListener("mouseup", onMouseUp);
+                oldSvg.removeEventListener("mouseleave", onMouseUp);
+                svgContainer.removeEventListener("wheel", onWheel);
+                svgContainer.removeEventListener("contextmenu", onContextMenu);
+            }
+
+            function onMouseDown(evt) {
+                if (!svgRoot) return;
+                if (evt.button === 2) {
+                    isPanning = true;
+                    panStart = { x: evt.clientX, y: evt.clientY };
+                    panOrigin = { ...pan };
+                    return;
+                }
+                if (evt.ctrlKey && evt.button === 0) {
+                    const p = svgPointFromEvent(evt);
+                    const region = findRegionAtPoint(p);
+                    if (region) {
+                        interactionSnapshot = captureSnapshot();
+                        const handle = getHandleAtPoint(region, p);
+                        highlightRegion(region.id);
+                        if (handle && handle !== "inside") {
+                            if (fixedLetterPlacement) {
+                                return; // no resize allowed en modo tamaño fijo
+                            }
+                            resizingRegion = {
+                                region,
+                                handle,
+                                start: p,
+                                origin: { x: region.x, y: region.y, w: region.width, h: region.height }
+                            };
+                            return;
+                        }
+                        draggingRegion = {
+                            region,
+                            start: p,
+                            origin: { x: region.x, y: region.y }
+                        };
+                        return;
+                    }
+                    return; // Ctrl presionado: no crear recorte nuevo
+                }
+                if (evt.button !== 0) return;
+                if (fixedLetterPlacement) {
+                    const p = svgPointFromEvent(evt);
+                    createFixedLetterRegionAtPoint(p);
+                    updateRegionsList();
+                    return;
+                }
+                if (evt.button !== 0) return;
+                drawing = true;
+                const p = svgPointFromEvent(evt);
+                startPoint = p;
+
+                const rect = document.createElementNS(svgNS, "rect");
+                rect.setAttribute("class", "crop-rect drawing");
+                rect.setAttribute("x", p.x);
+                rect.setAttribute("y", p.y);
+                rect.setAttribute("width", 0);
+                rect.setAttribute("height", 0);
+                svgRoot.appendChild(rect);
+
+                const label = document.createElementNS(svgNS, "text");
+                label.setAttribute("class", "crop-label");
+                label.textContent = "?";
+                label.setAttribute("x", p.x + 4);
+                label.setAttribute("y", p.y + 12);
+                svgRoot.appendChild(label);
+
+                currentRect = rect;
+                currentLabel = label;
+            }
+
+            function onMouseMove(evt) {
+                if (isPanning) {
+                    const dx = evt.clientX - panStart.x;
+                    const dy = evt.clientY - panStart.y;
+                    pan = { x: panOrigin.x + dx, y: panOrigin.y + dy };
+                    applyViewTransform();
+                    return;
+                }
+                if (resizingRegion) {
+                    const { region, handle, start, origin } = resizingRegion;
+                    const p = svgPointFromEvent(evt);
+                    let dx = p.x - start.x;
+                    let dy = p.y - start.y;
+                    let x = origin.x;
+                    let y = origin.y;
+                    let w = origin.w;
+                    let h = origin.h;
+                    const minSize = 5;
+
+                    const lockAspect = lockLetterAspect || fixedLetterPlacement;
+
+                    if (lockAspect) {
+                        const ratio = LETTER_RATIO;
+                        if (handle === "se") {
+                            w = Math.max(minSize, origin.w + dx);
+                            h = w * ratio;
+                            y = origin.y + (origin.h - h);
+                        } else if (handle === "ne") {
+                            w = Math.max(minSize, origin.w + dx);
+                            h = w * ratio;
+                            y = origin.y + origin.h - h;
+                            x = origin.x + (origin.w - w);
+                        } else if (handle === "sw") {
+                            w = Math.max(minSize, origin.w - dx);
+                            w = Math.max(minSize, w);
+                            h = w * ratio;
+                            x = origin.x + origin.w - w;
+                            y = origin.y + (origin.h - h);
+                        } else if (handle === "nw") {
+                            w = Math.max(minSize, origin.w - dx);
+                            h = w * ratio;
+                            x = origin.x + origin.w - w;
+                            y = origin.y + origin.h - h;
+                        } else if (handle === "e") {
+                            w = Math.max(minSize, origin.w + dx);
+                            h = w * ratio;
+                            y = origin.y + (origin.h - h) / 2;
+                        } else if (handle === "w") {
+                            w = Math.max(minSize, origin.w - dx);
+                            h = w * ratio;
+                            x = origin.x + origin.w - w;
+                            y = origin.y + (origin.h - h) / 2;
+                        } else if (handle === "s") {
+                            h = Math.max(minSize, origin.h + dy);
+                            w = h / ratio;
+                            x = origin.x + (origin.w - w) / 2;
+                        } else if (handle === "n") {
+                            h = Math.max(minSize, origin.h - dy);
+                            w = h / ratio;
+                            y = origin.y + origin.h - h;
+                            x = origin.x + (origin.w - w) / 2;
+                        }
+                    } else {
+                        if (handle.includes("e")) {
+                            w = Math.max(minSize, origin.w + dx);
+                        }
+                        if (handle.includes("s")) {
+                            h = Math.max(minSize, origin.h + dy);
+                        }
+                        if (handle.includes("w")) {
+                            x = origin.x + dx;
+                            w = Math.max(minSize, origin.w - dx);
+                            if (w === minSize) x = origin.x + origin.w - minSize;
+                        }
+                        if (handle.includes("n")) {
+                            y = origin.y + dy;
+                            h = Math.max(minSize, origin.h - dy);
+                            if (h === minSize) y = origin.y + origin.h - minSize;
+                        }
+                    }
+
+                    region.x = x;
+                    region.y = y;
+                    region.width = w;
+                    region.height = h;
+                    updateRegionElements(region);
+                    updateRegionsList();
+                    return;
+                }
+                if (draggingRegion) {
+                    const { region, start, origin } = draggingRegion;
+                    const p = svgPointFromEvent(evt);
+                    const dx = p.x - start.x;
+                    const dy = p.y - start.y;
+                    region.x = origin.x + dx;
+                    region.y = origin.y + dy;
+                    updateRegionElements(region);
+                    updateRegionsList();
+                    return;
+                }
+                if (!drawing || !svgRoot || !currentRect || !currentLabel) return;
+                const p = svgPointFromEvent(evt);
+                const x1 = startPoint.x;
+                const y1 = startPoint.y;
+                const x2 = p.x;
+                const y2 = p.y;
+                let x = Math.min(x1, x2);
+                let y = Math.min(y1, y2);
+                let w = Math.abs(x2 - x1);
+                let h = Math.abs(y2 - y1);
+
+                if (lockLetterAspect) {
+                    const baseW = Math.abs(x2 - x1);
+                    const baseH = Math.abs(y2 - y1);
+                    w = Math.max(baseW, baseH / LETTER_RATIO);
+                    h = w * LETTER_RATIO;
+                    x = x2 >= x1 ? x1 : x1 - w;
+                    y = y2 >= y1 ? y1 : y1 - h;
+                }
+
+                currentRect.setAttribute("x", x);
+                currentRect.setAttribute("y", y);
+                currentRect.setAttribute("width", w);
+                currentRect.setAttribute("height", h);
+
+                currentLabel.setAttribute("x", x + 4);
+                currentLabel.setAttribute("y", y + 12);
+            }
+
+            function onMouseUp(evt) {
+                if (isPanning && evt.button === 2) {
+                    isPanning = false;
+                    return;
+                }
+                if (resizingRegion && evt.button === 0) {
+                    resizingRegion = null;
+                    if (interactionSnapshot) {
+                        pushHistory(interactionSnapshot);
+                        interactionSnapshot = null;
+                    }
+                    return;
+                }
+                if (draggingRegion && evt.button === 0) {
+                    draggingRegion = null;
+                    if (interactionSnapshot) {
+                        pushHistory(interactionSnapshot);
+                        interactionSnapshot = null;
+                    }
+                    return;
+                }
+                if (!drawing) return;
+                drawing = false;
+                if (!svgRoot || !currentRect || !currentLabel) return;
+
+                currentLabel.textContent = "Hoja ?";
+                addRegionFromRect(currentRect, currentLabel);
+
+                currentRect = null;
+                currentLabel = null;
+                updateRegionsList();
+            }
+
+            function createFixedLetterRegionAtPoint(p) {
+                if (!svgRoot) return;
+                const width = fixedLetterWidth;
+                const height = width * LETTER_RATIO;
+                const x = p.x - width / 2;
+                const y = p.y - height / 2;
+
+                const rect = document.createElementNS(svgNS, "rect");
+                rect.setAttribute("class", "crop-rect");
+                rect.setAttribute("x", x);
+                rect.setAttribute("y", y);
+                rect.setAttribute("width", width);
+                rect.setAttribute("height", height);
+                svgRoot.appendChild(rect);
+
+                const label = document.createElementNS(svgNS, "text");
+                label.setAttribute("class", "crop-label");
+                label.textContent = "Hoja ?";
+                label.setAttribute("x", x + 4);
+                label.setAttribute("y", y + 12);
+                svgRoot.appendChild(label);
+
+                addRegionFromRect(rect, label);
+            }
+
+            function onWheel(evt) {
+                if (!svgRoot) return;
+                evt.preventDefault();
+                const delta = evt.deltaY;
+                const factor = delta < 0 ? 1.1 : 0.9;
+                const rect = svgContainer.getBoundingClientRect();
+                const center = { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+                setZoom(zoom * factor, center);
+            }
+
+            function loadSvgFromFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    try {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(text, "image/svg+xml");
+                        const newSvg = doc.documentElement;
+
+                        if (svgRoot) {
+                            detachDrawingHandlers(svgRoot);
+                        }
+
+                        svgContainer.innerHTML = "";
+                        svgRoot = newSvg;
+
+                        applySvgScale(svgRoot);
+                        svgRoot.style.maxWidth = "none";
+                        svgRoot.style.maxHeight = "none";
+                        applyViewTransform();
+
+                        svgContainer.appendChild(svgRoot);
+                        resetAll();
+                        regionCounter = 0;
+                        attachDrawingHandlers();
+
+                        const scaledW = Math.round(originalSvgSize.width * svgScaleFactor);
+                        const scaledH = Math.round(originalSvgSize.height * svgScaleFactor);
+                        const scaleMsg = svgScaleFactor < 1 ? ` (reducido a ${scaledW}x${scaledH}px)` : "";
+                        statusLabel.textContent = `SVG cargado: ${file.name}${scaleMsg}`;
+                        if (svgScaleFactor < 1) {
+                            const pct = (svgScaleFactor * 100).toFixed(1);
+                            showToast(`SVG enorme: reducido a ${pct}% para renderizar mas rapido.`);
+                        } else {
+                            showToast("SVG cargado correctamente.");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Error al leer el SVG.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function serializeRegionAsSvg(region) {
+                if (!svgRoot) return null;
+                const clone = svgRoot.cloneNode(true);
+
+                // Quitar transformaciones de vista (zoom/pan) para exportar coordenadas limpias
+                clone.style.transform = "";
+                clone.style.transformOrigin = "";
+
+                clone.querySelectorAll(".crop-rect, .crop-label").forEach(el => el.remove());
+
+                const scaledW = region.width * svgScaleFactor;
+                const scaledH = region.height * svgScaleFactor;
+                clone.setAttribute("viewBox", `${region.x} ${region.y} ${region.width} ${region.height}`);
+                clone.setAttribute("width", scaledW);
+                clone.setAttribute("height", scaledH);
+
+                const serializer = new XMLSerializer();
+                const svgString = serializer.serializeToString(clone);
+                return svgString;
+            }
+
+            function downloadTextFile(filename, mimeType, text) {
+                const blob = new Blob([text], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            }
+
+            async function exportAllSvgs() {
+                if (!regions.length) {
+                    showToast("No hay recortes para exportar.");
+                    return;
+                }
+                regions.forEach((region, index) => {
+                    const svgText = serializeRegionAsSvg(region);
+                    if (!svgText) return;
+                    const filename = `hoja_${index + 1}.svg`;
+                    downloadTextFile(filename, "image/svg+xml", svgText);
+                });
+                showToast(`Exportadas ${regions.length} hojas como SVG.`);
+            }
+
+            async function svgTextToRasterDataUrl(svgText, width, height, scaleQuality, format = "png", jpegQuality = 0.85) {
+                const effectiveQuality = capRasterQuality(width, height, scaleQuality);
+                return new Promise((resolve, reject) => {
+                    const blob = new Blob([svgText], { type: "image/svg+xml" });
+                    const url = URL.createObjectURL(blob);
+                    const img = new Image();
+                    const timeout = setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                        reject(new Error("timeout raster"));
+                    }, RASTER_TIMEOUT_MS);
+                    img.onload = () => {
+                        clearTimeout(timeout);
+                        const canvas = document.createElement("canvas");
+                        const pixelWidth = Math.max(1, Math.round(width * effectiveQuality));
+                        const pixelHeight = Math.max(1, Math.round(height * effectiveQuality));
+                        canvas.width = pixelWidth;
+                        canvas.height = pixelHeight;
+                        const ctx = canvas.getContext("2d");
+                        ctx.scale(effectiveQuality, effectiveQuality);
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const mime = format === "jpeg" ? "image/jpeg" : "image/png";
+                        const dataUrl = canvas.toDataURL(mime, jpegQuality);
+                        URL.revokeObjectURL(url);
+                        resolve(dataUrl);
+                    };
+                    img.onerror = (err) => {
+                        clearTimeout(timeout);
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    };
+                    img.src = url;
+                });
+            }
+
+            async function exportToPdf() {
+                if (!regions.length) {
+                    showToast("No hay recortes para exportar.");
+                    return;
+                }
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    showToast("No se pudieron cargar las librerías de PDF.");
+                    return;
+                }
+
+                const quality = getQualityFactor();
+                const rasterFormat = pdfFormatSelect.value === "jpeg" ? "jpeg" : "png";
+                const jpegQuality = getJpegQuality();
+                const { jsPDF } = window.jspdf;
+                // Formato carta en puntos (8.5 x 11 in) para que el PDF sea tamaño carta
+                const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                exportPdfBtn.disabled = true;
+                updateProgress(2, "Preparando PDF...");
+                await waitNextFrame();
+
+                let success = false;
+
+                try {
+                    for (let i = 0; i < regions.length; i++) {
+                        const region = regions[i];
+                        const svgText = serializeRegionAsSvg(region);
+                        if (!svgText) continue;
+
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(svgText, "image/svg+xml");
+                        const pageSvg = doc.documentElement;
+                        const viewBox = pageSvg.getAttribute("viewBox")?.split(/\s+/).map(Number);
+                        const regionWidth = viewBox && viewBox.length === 4 ? viewBox[2] : region.width;
+                        const regionHeight = viewBox && viewBox.length === 4 ? viewBox[3] : region.height;
+                        const scaledRegionWidth = regionWidth * svgScaleFactor;
+                        const scaledRegionHeight = regionHeight * svgScaleFactor;
+
+                        const scale = Math.min(pageWidth / scaledRegionWidth, pageHeight / scaledRegionHeight);
+                        const renderWidth = scaledRegionWidth * scale;
+                        const renderHeight = scaledRegionHeight * scale;
+                        const offsetX = (pageWidth - renderWidth) / 2;
+                        const offsetY = (pageHeight - renderHeight) / 2;
+
+                        updateProgress(Math.max(3, Math.round((i / regions.length) * 100)), `Rasterizando hoja ${i + 1}/${regions.length}...`);
+                        await waitNextFrame();
+
+                        const rasterUrl = await svgTextToRasterDataUrl(svgText, renderWidth, renderHeight, quality, rasterFormat, jpegQuality);
+
+                        if (i > 0) {
+                            pdf.addPage();
+                        }
+
+                        const imgType = rasterFormat === "jpeg" ? "JPEG" : "PNG";
+                        pdf.addImage(rasterUrl, imgType, offsetX, offsetY, renderWidth, renderHeight, undefined, "FAST");
+
+                        const progress = Math.round(((i + 1) / regions.length) * 100);
+                        updateProgress(progress, `Exportando PDF... ${progress}%`);
+                    }
+                    success = true;
+                } catch (err) {
+                    console.error("Error exportando PDF", err);
+                    const message = err?.message === "timeout raster"
+                        ? "El rasterizado tardó demasiado. Baja la calidad o reduce el SVG."
+                        : "Error al generar el PDF.";
+                    showToast(message);
+                    updateProgress(0, "Error");
+                } finally {
+                    if (success) {
+                        pdf.save("recortes.pdf");
+                        showToast(`PDF exportado con ${regions.length} hojas.`);
+                        updateProgress(100, "PDF listo");
+                        hideProgress(600);
+                    } else {
+                        hideProgress(0);
+                    }
+                    exportPdfBtn.disabled = false;
+                }
+            }
+
+            function saveConfig() {
+                if (!regions.length) {
+                    showToast("No hay recortes que guardar.");
+                    return;
+                }
+                const data = {
+                    version: 1,
+                    svgName: fileInput.files?.[0]?.name || null,
+                    regions: regions.map(r => ({
+                        x: r.x,
+                        y: r.y,
+                        width: r.width,
+                        height: r.height
+                    })),
+                    settings: {
+                        lockLetterAspect,
+                        fixedLetterPlacement,
+                        fixedLetterWidth
+                    }
+                };
+                const json = JSON.stringify(data, null, 2);
+                downloadTextFile("recortes-config.json", "application/json", json);
+                showToast("Configuración guardada.");
+            }
+
+            function clearRegionsOnly() {
+                regions.forEach(r => {
+                    r.rectEl?.remove();
+                    r.labelEl?.remove();
+                });
+                regions = [];
+                activeRegionId = null;
+                setButtonsEnabled(false);
+                updateRegionsList();
+            }
+
+            function addRegionFromData(data) {
+                if (!svgRoot) return;
+                const rect = document.createElementNS(svgNS, "rect");
+                rect.setAttribute("class", "crop-rect");
+                rect.setAttribute("x", data.x);
+                rect.setAttribute("y", data.y);
+                rect.setAttribute("width", data.width);
+                rect.setAttribute("height", data.height);
+                svgRoot.appendChild(rect);
+
+                const label = document.createElementNS(svgNS, "text");
+                label.setAttribute("class", "crop-label");
+                label.textContent = "Hoja ?";
+                label.setAttribute("x", data.x + 4);
+                label.setAttribute("y", data.y + 12);
+                svgRoot.appendChild(label);
+
+                addRegionFromRect(rect, label);
+            }
+
+            function loadConfigFromData(data) {
+                if (!svgRoot) {
+                    showToast("Primero carga un SVG para aplicar la configuración.");
+                    return;
+                }
+                if (!Array.isArray(data.regions)) {
+                    showToast("Config inválida.");
+                    return;
+                }
+                clearRegionsOnly();
+                regionCounter = 0;
+                data.regions.forEach(r => {
+                    if (typeof r.x === "number" && typeof r.y === "number" && typeof r.width === "number" && typeof r.height === "number") {
+                        addRegionFromData(r);
+                    }
+                });
+                if (data.settings) {
+                    if (typeof data.settings.lockLetterAspect === "boolean") {
+                        lockLetterAspect = data.settings.lockLetterAspect;
+                        lockLetterAspectToggle.checked = lockLetterAspect;
+                    }
+                    if (typeof data.settings.fixedLetterPlacement === "boolean") {
+                        fixedLetterPlacement = data.settings.fixedLetterPlacement;
+                        fixedLetterClickToggle.checked = fixedLetterPlacement;
+                    }
+                    if (typeof data.settings.fixedLetterWidth === "number") {
+                        fixedLetterWidth = clampLetterWidth(data.settings.fixedLetterWidth);
+                        fixedLetterWidthInput.value = fixedLetterWidth;
+                    }
+                }
+                if (!regions.length) {
+                    showToast("No se cargaron recortes válidos.");
+                    return;
+                }
+                history = [];
+                renumberRegions();
+                updateRegionsList();
+                highlightRegion(regions[0]?.id || null);
+                showToast(`Configuración cargada (${regions.length} recortes).`);
+            }
+
+            fileInput.addEventListener("change", (evt) => {
+                const file = evt.target.files[0];
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith(".svg")) {
+                    showToast("Por ahora solo se admite SVG.");
+                }
+                loadSvgFromFile(file);
+            });
+
+            clearRectsBtn.addEventListener("click", () => {
+                if (!regions.length) return;
+                pushHistory(captureSnapshot());
+                regions.forEach(r => {
+                    if (r.rectEl && r.rectEl.parentNode) r.rectEl.remove();
+                    if (r.labelEl && r.labelEl.parentNode) r.labelEl.remove();
+                });
+                regions = [];
+                regionCounter = 0;
+                updateRegionsList();
+                renumberRegions();
+                setButtonsEnabled(false);
+                activeRegionId = null;
+                showToast("Se limpiaron todos los recortes.");
+            });
+
+            if (exportSvgsBtn) {
+                exportSvgsBtn.addEventListener("click", exportAllSvgs);
+            }
+            if (exportPdfBtn) {
+                exportPdfBtn.addEventListener("click", exportToPdf);
+            }
+
+            qualityRange.addEventListener("input", (evt) => {
+                syncQualityInputs(evt.target.value);
+            });
+            qualityNumber.addEventListener("input", (evt) => {
+                syncQualityInputs(evt.target.value);
+            });
+            syncQualityInputs(qualityRange.value);
+
+            jpegQualityRange.addEventListener("input", (evt) => {
+                syncJpegQualityInputs(evt.target.value);
+            });
+            jpegQualityNumber.addEventListener("input", (evt) => {
+                syncJpegQualityInputs(evt.target.value);
+            });
+            syncJpegQualityInputs(jpegQualityRange.value);
+
+            showRegionsBtn.addEventListener("click", () => setSidebarMode("regions"));
+            backSidebarBtn.addEventListener("click", () => setSidebarMode("default"));
+            openLetterModeBtn.addEventListener("click", () => setSidebarMode("letter"));
+            backLetterBtn.addEventListener("click", () => setSidebarMode("default"));
+
+            lockLetterAspectToggle.checked = lockLetterAspect;
+            fixedLetterClickToggle.checked = fixedLetterPlacement;
+            fixedLetterWidthInput.value = fixedLetterWidth;
+            setSidebarMode("default");
+
+            lockLetterAspectToggle.addEventListener("change", (evt) => {
+                lockLetterAspect = evt.target.checked;
+            });
+
+            fixedLetterClickToggle.addEventListener("change", (evt) => {
+                fixedLetterPlacement = evt.target.checked;
+                // Al activar colocación fija, forzamos proporción carta también
+                if (fixedLetterPlacement) {
+                    lockLetterAspect = true;
+                    lockLetterAspectToggle.checked = true;
+                }
+            });
+
+            fixedLetterWidthInput.addEventListener("input", (evt) => {
+                fixedLetterWidth = clampLetterWidth(evt.target.value);
+                fixedLetterWidthInput.value = fixedLetterWidth;
+            });
+
+            document.addEventListener("keydown", (evt) => {
+                if (evt.ctrlKey && evt.key.toLowerCase() === "z") {
+                    const snapshot = history.pop();
+                    if (snapshot) {
+                        restoreSnapshot(snapshot);
+                        showToast("Acción deshecha.");
+                    }
+                }
+            });
+
+            function containerCenter() {
+                const rect = svgContainer.getBoundingClientRect();
+                return { x: rect.width / 2, y: rect.height / 2 };
+            }
+
+            zoomInBtn.addEventListener("click", () => {
+                setZoom(zoom * 1.1, containerCenter());
+            });
+            zoomOutBtn.addEventListener("click", () => {
+                setZoom(zoom / 1.1, containerCenter());
+            });
+            zoomResetBtn.addEventListener("click", () => {
+                setZoom(1, containerCenter());
+            });
+
+            if (saveConfigBtn) {
+                saveConfigBtn.addEventListener("click", saveConfig);
+            }
+            if (loadConfigBtn && configFileInput) {
+                loadConfigBtn.addEventListener("click", () => configFileInput.click());
+                configFileInput.addEventListener("change", (evt) => {
+                const file = evt.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        loadConfigFromData(parsed);
+                    } catch (err) {
+                        console.error(err);
+                        showToast("No se pudo leer la configuración.");
+                    }
+                };
+                reader.readAsText(file);
+                configFileInput.value = "";
+                });
+            }
+        })();
+    </script>
+</body>
+
+</html>

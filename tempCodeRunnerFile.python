@@ -1,0 +1,23 @@
+x = int(input("Ingrese el primer valor: "))
+z = int(input("Ingrese el segundo valor: "))
+
+operacion = input("ingrese el operador: ")
+
+if operacion == "*":
+    resultado = x*z
+elif operacion == "+":
+    resultado = x+z
+elif operacion == "-":
+    resultado = x-z
+elif operacion == "/":
+    resultado = x/z
+elif operacion == "exponente":
+    resultado = x**z
+elif operacion == "pato":
+    print("cuac")
+    input()
+else:
+    print("Operador no válido")
+
+
+print(f"El resultado de la operación es = ", resultado)

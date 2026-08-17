@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Mapa Mental</title>
+  <link rel="stylesheet" href="./assets/css/editor_mapa_conceptual.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+  <style>
+    .tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 10px; }
+    .tab-btn { background: transparent; border: none; color: #aaa; padding: 10px 20px; cursor: pointer; font-size: 16px; border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: #fff; border-bottom: 2px solid #e67c4f; }
+    .tab-content { display: none; height: calc(100% - 50px); overflow-y: auto; }
+    .tab-content.active { display: block; }
+    .CodeMirror { height: 100%; font-size: 14px; border-radius: 4px; }
+    #editorTabContent { height: 60vh; }
+    .export-btn { background-color: #4CAF50; color: white; margin-left: 10px; }
+    
+    /* Image Tab specific */
+    .image-controls { margin-bottom: 15px; padding: 15px; background: #2a2a2a; border-radius: 5px; }
+    .image-node { margin-bottom: 10px; padding: 10px; background: #333; display: flex; align-items: center; justify-content: space-between; }
+    .image-preview { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-right: 15px; background: #000; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <section class="panel left">
+      <div class="header">
+        <h1>Editor Mapa Mental</h1>
+        <p>Edita el código, personaliza el diseño y asigna imágenes de la web.</p>
+      </div>
+
+      <div class="content">
+        <div class="toolbar toolbar-main">
+          <button class="btn-primary" id="btnSaveAs">Guardar .drawio...</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-target="editorTab">Editor</button>
+          <button class="tab-btn" data-target="visualTab">Diseño</button>
+          <button class="tab-btn" data-target="imagesTab">Imágenes</button>
+        </div>
+
+        <div id="editorTab" class="tab-content active">
+          <div id="editorTabContent"></div>
+        </div>
+
+        <div id="visualTab" class="tab-content">
+          <div class="group">
+            <div class="group-head">
+              <h2>CONFIG visual</h2>
+            </div>
+            <div id="configForm" class="config-form"></div>
+          </div>
+        </div>
+
+        <div id="imagesTab" class="tab-content">
+          <div class="image-controls">
+            <label>Proveedor:</label>
+            <select id="imageProvider">
+                <option value="ddg">DuckDuckGo</option>
+                <option value="bing">Bing</option>
+            </select>
+            <br><br>
+            <button class="btn-primary" id="btnAutoAssignImages">Auto-asignar imágenes a nodos principales</button>
+            <div id="imageStatus" style="margin-top: 10px; color: #e67c4f;"></div>
+          </div>
+          <div id="imageNodesList"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="panel preview">
+      <div class="preview-head">
+        <h2>Vista previa draw.io</h2>
+        <div class="meta" id="previewMeta">Sincronizado</div>
+      </div>
+      <div id="graph-container">
+        <iframe id="drawioIframe" src="https://viewer.diagrams.net/?client=1&ui=min" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+  
+  <script>
+    const defaultCode = `mapa_ejemplo = {
+    "Ingeniería de Software": {
+        "Diseño": ["Patrones", "Arquitectura"],
+        "Desarrollo": {
+            "Frontend": ["React", "Vue"],
+            "Backend": ["Python", "NodeJS"]
+        },
+        "Pruebas": ["Unitarias", "Integración"]
+    }
+}`;
+
+    let configData = {
+        "FONT_FAMILY": "Arial",
+        "FONT_SIZE": 10,
+        "FONT_COLOR": "#000000",
+        "FONT_BOLD": False,
+        "FONT_ITALIC": False,
+        "STROKE_W": 1,
+        "EDGE_COLOR": "#8AAEE0",
+        "BOX_ARC_SIZE": 8,
+        "BOX_SHADOW": False,
+        "MAIN_FILL_COLOR": "#e67c4f",
+        "MAIN_STROKE_COLOR": "#000000",
+        "SUBTITLE_FILL_COLOR": "#8AAEE0",
+        "SUBTITLE_STROKE_COLOR": "#000000",
+        "CONNECTOR_FONT_FAMILY": "Arial",
+        "CONNECTOR_FONT_SIZE": 8,
+        "CONNECTOR_FONT_COLOR": "#000000",
+        "CONNECTOR_BG_COLOR": "#FFFFFF",
+        "CONNECTOR_BORDER_COLOR": "none",
+        "CONNECTOR_SHADOW": False,
+        "CONNECTOR_TEXT_SHADOW": False,
+        "BOX_W": 80,
+        "BOX_H": 40,
+        "X_STEP": 120,
+        "Y_STEP": 90,
+        "POSITION_NOISE": 0,
+        "PALETTE": [
+            ["#b7d3f6", "#000000"],
+            ["#d9f3b0", "#000000"],
+            ["#f3caca", "#000000"],
+            ["#eccff1", "#000000"],
+        ],
+        "IMAGE_DIR": "ImagenesMapaMental",
+        "IMAGE_WIDTH": 70,
+        "IMAGE_HEIGHT": null,
+        "IMAGES_URL_MAP": {}
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.target).classList.add('active');
+        if(btn.dataset.target === 'editorTab') editor.refresh();
+      });
+    });
+
+    const editor = CodeMirror(document.getElementById('editorTabContent'), {
+      value: defaultCode,
+      mode: "python",
+      theme: "monokai",
+      lineNumbers: true,
+      indentUnit: 4,
+    });
+
+    let debounceTimer;
+    editor.on("change", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updatePreview, 800);
+    });
+
+    async function updatePreview() {
+      const code = editor.getValue();
+      const meta = document.getElementById("previewMeta");
+      meta.innerText = "Generando...";
+      try {
+        const res = await fetch("/api/generate/mind", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            map_data_str: code,
+            config: configData
+          })
+        });
+        if(!res.ok) throw new Error(await res.text());
+        const xml = await res.text();
+        
+        const iframe = document.getElementById('drawioIframe');
+        iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: xml}), '*');
+        meta.innerText = "Sincronizado";
+      } catch (err) {
+        meta.innerText = "Error";
+        console.error(err);
+      }
+    }
+
+    function buildForm() {
+       const form = document.getElementById("configForm");
+       form.innerHTML = "";
+       for(const key in configData) {
+          if(key === "PALETTE" || key === "IMAGES_URL_MAP") continue;
+          const div = document.createElement("div");
+          div.style.marginBottom = "5px";
+          const label = document.createElement("label");
+          label.innerText = key + ": ";
+          label.style.display = "inline-block";
+          label.style.width = "180px";
+          const input = document.createElement("input");
+          input.value = configData[key];
+          if(typeof configData[key] === "boolean") {
+              input.type = "checkbox";
+              input.checked = configData[key];
+              input.onchange = (e) => { configData[key] = e.target.checked; updatePreview(); };
+          } else {
+              input.type = "text";
+              input.onchange = (e) => { 
+                let val = e.target.value;
+                if(!isNaN(val)) val = parseFloat(val);
+                configData[key] = val; 
+                updatePreview(); 
+              };
+          }
+          div.appendChild(label);
+          div.appendChild(input);
+          form.appendChild(div);
+       }
+    }
+    buildForm();
+
+    window.addEventListener('message', function(e) {
+        if (e.data == 'ready') {
+            updatePreview();
+        }
+    });
+
+    document.getElementById("btnSaveAs").addEventListener("click", async () => {
+        try {
+            const res = await fetch("/api/generate/mind", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                map_data_str: editor.getValue(),
+                config: configData
+              })
+            });
+            const xml = await res.text();
+            const blob = new Blob([xml], { type: "application/xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Mapa_Mental.drawio";
+            a.click();
+        } catch(e) { console.error(e); }
+    });
+
+    // Images logic
+    document.getElementById("btnAutoAssignImages").addEventListener("click", async () => {
+        const status = document.getElementById("imageStatus");
+        status.innerText = "Extrayendo nodos...";
+        
+        // Very basic regex to find keys in dict
+        const code = editor.getValue();
+        const matches = code.match(/"([^"]+)"\s*:/g);
+        if(!matches) { status.innerText = "No se encontraron nodos principales."; return; }
+        
+        let nodes = matches.map(m => m.replace(/"/g, '').replace(':', '').trim());
+        const provider = document.getElementById("imageProvider").value;
+        const listDiv = document.getElementById("imageNodesList");
+        listDiv.innerHTML = "";
+        
+        status.innerText = "Buscando imágenes...";
+        configData["IMAGES_URL_MAP"] = {};
+        
+        for(let node of nodes) {
+            try {
+                const res = await fetch("/api/images/candidates", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ provider: provider, query: node + " icon png" })
+                });
+                const data = await res.json();
+                if(data.ok && data.candidates.length > 0) {
+                    const url = data.candidates[0].url || data.candidates[0];
+                    configData["IMAGES_URL_MAP"][node.toLowerCase()] = {
+                        uri: url,
+                        height: 70
+                    };
+                    
+                    const div = document.createElement("div");
+                    div.className = "image-node";
+                    div.innerHTML = \`
+                        <div style="display:flex; align-items:center;">
+                            <img src="\${url}" class="image-preview">
+                            <b>\${node}</b>
+                        </div>
+                        <button class="btn-ghost" onclick="this.parentElement.remove(); delete configData['IMAGES_URL_MAP']['\${node.toLowerCase()}']; updatePreview();">Remover</button>
+                    \`;
+                    listDiv.appendChild(div);
+                }
+            } catch(e) { console.error("Error fetching image for", node); }
+        }
+        
+        status.innerText = "¡Listo!";
+        updatePreview();
+    });
+
+  </script>
+</body>
+</html>

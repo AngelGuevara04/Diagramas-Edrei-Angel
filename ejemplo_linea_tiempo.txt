@@ -1,0 +1,6 @@
+﻿# Formato: fecha | titulo | query(opcional)
+1760-1840 | Revolucion Industrial | revolucion industrial foto historica
+1914-1918 | Primera Guerra Mundial
+1969 | Llegada a la Luna | apollo 11 moon landing photo
+1989 | Caida del Muro de Berlin
+2007 | Lanzamiento del iPhone

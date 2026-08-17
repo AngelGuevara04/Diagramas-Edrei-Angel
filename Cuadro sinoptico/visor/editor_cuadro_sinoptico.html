@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Cuadro Sinóptico</title>
+  <link rel="stylesheet" href="./assets/css/editor_cuadro_sinoptico.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+  <style>
+    .tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 10px; }
+    .tab-btn { background: transparent; border: none; color: #aaa; padding: 10px 20px; cursor: pointer; font-size: 16px; border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: #fff; border-bottom: 2px solid #e67c4f; }
+    .tab-content { display: none; height: calc(100% - 50px); overflow-y: auto; }
+    .tab-content.active { display: block; }
+    .CodeMirror { height: 100%; font-size: 14px; border-radius: 4px; }
+    #editorTabContent { height: 60vh; }
+    .export-btn { background-color: #4CAF50; color: white; margin-left: 10px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <section class="panel left">
+      <div class="header">
+        <h1>Editor Cuadro Sinóptico</h1>
+        <p>Edita el código o la configuración, la vista previa se actualizará automáticamente.</p>
+      </div>
+
+      <div class="content">
+        <div class="toolbar toolbar-main">
+          <button class="btn-primary" id="btnSaveAs">Guardar .drawio...</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-target="editorTab">Editor de Código</button>
+          <button class="tab-btn" data-target="visualTab">Diseño Visual</button>
+        </div>
+
+        <div id="editorTab" class="tab-content active">
+          <div id="editorTabContent"></div>
+        </div>
+
+        <div id="visualTab" class="tab-content">
+          <div class="group">
+            <div class="group-head">
+              <h2>CONFIG visual</h2>
+            </div>
+            <div id="configForm" class="config-form"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="panel preview">
+      <div class="preview-head">
+        <h2>Vista previa draw.io</h2>
+        <div class="meta" id="previewMeta">Sincronizado</div>
+      </div>
+      <div id="graph-container">
+        <iframe id="drawioIframe" src="https://viewer.diagrams.net/?client=1&ui=min" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+  
+  <script>
+    const defaultCode = `chart = {
+    "Tema general": {
+        "Tema 1": ["Idea 1", "Idea 2"],
+        "Tema 2": {
+            "Subtema A": ["Punto A", "Punto B"],
+            "Subtema B": {
+                "Detalle 1": ["Explicacion 1"],
+                "Detalle 2": [],
+            },
+        },
+    }
+}`;
+
+    let configData = {
+        "PX_PER_CHAR": 7.0,
+        "LINE_H": 17,
+        "PADDING_V": 20,
+        "TOP_MARGIN": 40,
+        "LEFT_MARGIN": 40,
+        "SIBLING_GAP": 10,
+        "SPACE_LABEL_TO_BRACE": 5,
+        "SPACE_BRACE_TO_CONTENT": 5,
+        "BRACE_W": 14,
+        "TOP_MIN_LABEL_W": 100,
+        "MIN_LABEL_W": 10,
+        "MAX_LABEL_W": 250,
+        "MAX_ITEM_W": 250,
+        "BRACE_THICK": 1,
+        "LABEL_ONLY_MIN_H": 30,
+        "BRACE_STYLE": "rounded",
+        "FONT_FAMILY": "Times New Roman",
+        "FONT_COLOR": "#415D66",
+        "BRACE_COLOR": "#4A4861"
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.target).classList.add('active');
+        if(btn.dataset.target === 'editorTab') editor.refresh();
+      });
+    });
+
+    const editor = CodeMirror(document.getElementById('editorTabContent'), {
+      value: defaultCode,
+      mode: "python",
+      theme: "monokai",
+      lineNumbers: true,
+      indentUnit: 4,
+    });
+
+    let debounceTimer;
+    editor.on("change", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updatePreview, 800);
+    });
+
+    async function updatePreview() {
+      const code = editor.getValue();
+      const meta = document.getElementById("previewMeta");
+      meta.innerText = "Generando...";
+      try {
+        const res = await fetch("/api/generate/synoptic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            map_data_str: code,
+            config: configData
+          })
+        });
+        if(!res.ok) throw new Error(await res.text());
+        const xml = await res.text();
+        
+        const iframe = document.getElementById('drawioIframe');
+        iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: xml}), '*');
+        meta.innerText = "Sincronizado";
+      } catch (err) {
+        meta.innerText = "Error";
+        console.error(err);
+      }
+    }
+
+    function buildForm() {
+       const form = document.getElementById("configForm");
+       form.innerHTML = "";
+       for(const key in configData) {
+          const div = document.createElement("div");
+          div.style.marginBottom = "5px";
+          const label = document.createElement("label");
+          label.innerText = key + ": ";
+          label.style.display = "inline-block";
+          label.style.width = "180px";
+          const input = document.createElement("input");
+          input.value = configData[key];
+          if(typeof configData[key] === "boolean") {
+              input.type = "checkbox";
+              input.checked = configData[key];
+              input.onchange = (e) => { configData[key] = e.target.checked; updatePreview(); };
+          } else {
+              input.type = "text";
+              input.onchange = (e) => { 
+                let val = e.target.value;
+                if(!isNaN(val)) val = parseFloat(val);
+                configData[key] = val; 
+                updatePreview(); 
+              };
+          }
+          div.appendChild(label);
+          div.appendChild(input);
+          form.appendChild(div);
+       }
+    }
+    buildForm();
+
+    window.addEventListener('message', function(e) {
+        if (e.data == 'ready') {
+            updatePreview();
+        }
+    });
+
+    document.getElementById("btnSaveAs").addEventListener("click", async () => {
+        try {
+            const res = await fetch("/api/generate/synoptic", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                map_data_str: editor.getValue(),
+                config: configData
+              })
+            });
+            const xml = await res.text();
+            const blob = new Blob([xml], { type: "application/xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Cuadro_Sinoptico.drawio";
+            a.click();
+        } catch(e) { console.error(e); }
+    });
+
+  </script>
+</body>
+</html>

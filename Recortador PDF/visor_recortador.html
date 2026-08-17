@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Visor y recortador de imágenes (con escritura)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #181818;
+      color: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .top-bar {
+      padding: 10px 16px;
+      background: #202020;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid #333;
+    }
+    .button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      background: #2f6bed;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      border: none;
+    }
+    .button:hover {
+      background: #2453b3;
+    }
+    #counter {
+      font-size: 14px;
+      color: #ccc;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    .viewer {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px;
+      overflow: auto;
+    }
+    #filename {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-align: center;
+      word-break: break-all;
+    }
+    #canvas {
+      background: #000;
+      max-width: 100%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      border-radius: 4px;
+      cursor: crosshair;
+    }
+    .help {
+      flex: 1;
+      padding: 10px 14px;
+      background: #111;
+      border-left: 1px solid #333;
+      font-size: 14px;
+      overflow-y: auto;
+    }
+    .help h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .help ul {
+      padding-left: 18px;
+    }
+    .help li {
+      margin-bottom: 6px;
+    }
+    .kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #777;
+      font-family: monospace;
+      font-size: 12px;
+      background: #222;
+    }
+    .note {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 10px;
+    }
+    .warning {
+      color: #ffb74d;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="top-bar">
+    <button class="button" id="openFolderBtn">Elegir carpeta (lectura/escritura)</button>
+    <div id="counter"></div>
+  </div>
+
+  <div class="main">
+    <div class="viewer">
+      <div id="filename"></div>
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="help">
+      <h2>Comandos</h2>
+      <ul>
+        <li><span class="kbd">S</span> → siguiente imagen.</li>
+        <li><span class="kbd">D</span> → <b>borra el archivo</b> y pasa a la siguiente.</li>
+        <li><span class="kbd">X</span> → recorta el <b>10%</b> inferior, guarda y pasa a la siguiente (muestra 0.5 s).</li>
+        <li><span class="kbd">Click + arrastrar</span> → dibuja un <b>rectángulo libre</b> para recortar esa región, guarda y pasa a la siguiente (muestra 0.5 s).</li>
+        <li><span class="kbd">M</span> (mientras arrastras) → <b>cancela</b> el recorte actual.</li>
+        <li><span class="kbd">←</span> (flecha izquierda) → regresar a la imagen anterior (saltando las borradas).</li>
+        <li><span class="kbd">Z</span> → <b>deshacer</b> la última acción (borrado o recorte) sobre el archivo real.</li>
+      </ul>
+      <p class="warning">
+        ⚠ Esta versión SÍ modifica los archivos en disco (borrados y recortes).
+      </p>
+      <p class="note">
+        Necesitas Chrome o Edge y abrir este archivo desde <b>http://localhost</b> (por ejemplo con
+        <code>python -m http.server</code>) para que el navegador permita el acceso al sistema de archivos.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const openFolderBtn = document.getElementById("openFolderBtn");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const filenameEl = document.getElementById("filename");
+  const counterEl = document.getElementById("counter");
+
+  let dirHandle = null;
+  // Cada entrada: { name, handle, deleted }
+  let files = [];
+  let currentIndex = 0;
+
+  // Imagen actual en memoria (para recortes manuales)
+  let currentImage = null;
+  let currentDisplayWidth = 0;
+  let currentDisplayHeight = 0;
+
+  // Datos para recorte manual
+  let isDragging = false;
+  let dragStart = null;
+  let dragCurrent = null;
+  let selectionCanceled = false;
+  let previewTimeoutId = null;
+
+  // Pila de deshacer
+  // Cada entrada: { type: 'delete'|'crop', fileIndex, name, previousDeleted, previousBlob }
+  let undoStack = [];
+
+  openFolderBtn.addEventListener("click", () => {
+    openEditableFolder().catch(err => {
+      console.error(err);
+      alert("Error al abrir la carpeta. Revisa la consola.");
+    });
+  });
+
+  function renderEmpty(message) {
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#eee";
+    ctx.font = "24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+    filenameEl.textContent = "";
+    counterEl.textContent = "";
+    currentImage = null;
+  }
+
+  async function openEditableFolder() {
+    if (!window.showDirectoryPicker) {
+      alert("Tu navegador no soporta File System Access API. Usa Chrome o Edge recientes.");
+      return;
+    }
+
+    dirHandle = await window.showDirectoryPicker();
+    files = [];
+    currentIndex = 0;
+    undoStack = [];
+
+    const imgRegex = /\.(png|jpe?g|gif|webp|bmp)$/i;
+
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === "file" && imgRegex.test(entry.name)) {
+        files.push({
+          name: entry.name,
+          handle: entry,
+          deleted: false
+        });
+      }
+    }
+
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+
+    if (!files.length) {
+      renderEmpty("No se encontraron imágenes en la carpeta.");
+      return;
+    }
+
+    await showCurrent();
+  }
+
+  function loadImageFromBlob(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      };
+      img.src = url;
+    });
+  }
+
+  function drawImage(img, selectionRect = null) {
+    const maxW = 1000;
+    const maxH = 700;
+    const naturalW = img.naturalWidth;
+    const naturalH = img.naturalHeight;
+
+    const scale = Math.min(maxW / naturalW, maxH / naturalH, 1);
+    const displayW = Math.max(1, Math.round(naturalW * scale));
+    const displayH = Math.max(1, Math.round(naturalH * scale));
+
+    canvas.width = displayW;
+    canvas.height = displayH;
+
+    ctx.clearRect(0, 0, displayW, displayH);
+    ctx.drawImage(img, 0, 0, displayW, displayH);
+
+    currentDisplayWidth = displayW;
+    currentDisplayHeight = displayH;
+
+    if (selectionRect) {
+      ctx.save();
+      ctx.strokeStyle = "#ffeb3b";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+      ctx.restore();
+    }
+  }
+
+  function findNextIndex(direction) {
+    if (!files.length) return null;
+    let idx = currentIndex;
+
+    for (let i = 0; i < files.length; i++) {
+      idx = (idx + direction + files.length) % files.length;
+      if (!files[idx].deleted) return idx;
+    }
+    return null; // todas borradas
+  }
+
+  async function showCurrent() {
+    if (!dirHandle || !files.length) {
+      renderEmpty("Elige una carpeta para comenzar.");
+      return;
+    }
+
+    if (currentIndex < 0) currentIndex = 0;
+    if (currentIndex >= files.length) currentIndex = files.length - 1;
+
+    if (files[currentIndex].deleted) {
+      const next = findNextIndex(1);
+      if (next === null) {
+        renderEmpty("Todas las imágenes están borradas.");
+        return;
+      }
+      currentIndex = next;
+    }
+
+    const info = files[currentIndex];
+    const file = await info.handle.getFile();
+    const img = await loadImageFromBlob(file);
+    currentImage = img;
+    drawImage(img);
+
+    filenameEl.textContent = info.name;
+    counterEl.textContent = `Imagen ${currentIndex + 1} de ${files.length}`;
+  }
+
+  async function goNext() {
+    if (!files.length) return;
+    const next = findNextIndex(1);
+    if (next !== null) {
+      currentIndex = next;
+      await showCurrent();
+    }
+  }
+
+  async function goPrev() {
+    if (!files.length) return;
+    let idx = currentIndex;
+
+    for (let i = 0; i < files.length; i++) {
+      idx = (idx - 1 + files.length) % files.length;
+      if (!files[idx].deleted) {
+        currentIndex = idx;
+        await showCurrent();
+        return;
+      }
+    }
+  }
+
+  async function deleteCurrent() {
+    if (!dirHandle || !files.length) return;
+
+    const info = files[currentIndex];
+    if (info.deleted) {
+      await goNext();
+      return;
+    }
+
+    const file = await info.handle.getFile();
+    const backupBlob = file.slice();
+
+    undoStack.push({
+      type: "delete",
+      fileIndex: currentIndex,
+      name: info.name,
+      previousDeleted: info.deleted,
+      previousBlob: backupBlob
+    });
+
+    await dirHandle.removeEntry(info.name);
+    info.deleted = true;
+
+    await goNext();
+  }
+
+  async function cropBottom10() {
+    if (!dirHandle || !files.length) return;
+
+    const info = files[currentIndex];
+    const file = await info.handle.getFile();
+    const backupBlob = file.slice();
+
+    const img = await loadImageFromBlob(file);
+    const naturalW = img.naturalWidth;
+    const naturalH = img.naturalHeight;
+    const newH = Math.max(1, Math.round(naturalH * 0.9));
+
+    const tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width = naturalW;
+    tmpCanvas.height = newH;
+    const tctx = tmpCanvas.getContext("2d");
+    tctx.drawImage(img, 0, 0);
+
+    const newBlob = await new Promise(resolve => tmpCanvas.toBlob(resolve, file.type || "image/png"));
+    if (!newBlob) return;
+
+    undoStack.push({
+      type: "crop",
+      fileIndex: currentIndex,
+      name: info.name,
+      previousDeleted: info.deleted,
+      previousBlob: backupBlob
+    });
+
+    const writable = await info.handle.createWritable();
+    await writable.write(newBlob);
+    await writable.close();
+
+    const previewImg = await loadImageFromBlob(newBlob);
+    currentImage = previewImg;
+    drawImage(previewImg);
+
+    if (previewTimeoutId) clearTimeout(previewTimeoutId);
+    previewTimeoutId = setTimeout(() => {
+      goNext().catch(console.error);
+    }, 500);
+  }
+
+  async function applyManualCrop(selection) {
+    if (!dirHandle || !files.length || !currentImage) return;
+
+    const info = files[currentIndex];
+    const file = await info.handle.getFile();
+    const backupBlob = file.slice();
+    const img = currentImage;
+
+    const naturalW = img.naturalWidth;
+    const naturalH = img.naturalHeight;
+
+    const displayW = currentDisplayWidth || canvas.width;
+    const displayH = currentDisplayHeight || canvas.height;
+
+    if (!displayW || !displayH) return;
+
+    const scaleX = naturalW / displayW;
+    const scaleY = naturalH / displayH;
+
+    const sx = selection.x * scaleX;
+    const sy = selection.y * scaleY;
+    const sw = selection.w * scaleX;
+    const sh = selection.h * scaleY;
+
+    const cropW = Math.max(1, Math.round(sw));
+    const cropH = Math.max(1, Math.round(sh));
+
+    const tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width = cropW;
+    tmpCanvas.height = cropH;
+    const tctx = tmpCanvas.getContext("2d");
+    tctx.drawImage(
+      img,
+      sx, sy, sw, sh,
+      0, 0, cropW, cropH
+    );
+
+    const newBlob = await new Promise(resolve => tmpCanvas.toBlob(resolve, file.type || "image/png"));
+    if (!newBlob) return;
+
+    undoStack.push({
+      type: "crop",
+      fileIndex: currentIndex,
+      name: info.name,
+      previousDeleted: info.deleted,
+      previousBlob: backupBlob
+    });
+
+    const writable = await info.handle.createWritable();
+    await writable.write(newBlob);
+    await writable.close();
+
+    const previewImg = await loadImageFromBlob(newBlob);
+    currentImage = previewImg;
+    drawImage(previewImg);
+
+    if (previewTimeoutId) clearTimeout(previewTimeoutId);
+    previewTimeoutId = setTimeout(() => {
+      goNext().catch(console.error);
+    }, 500);
+  }
+
+  async function undo() {
+    if (!dirHandle || !undoStack.length) return;
+
+    const op = undoStack.pop();
+    const info = files[op.fileIndex];
+    if (!info) return;
+
+    if (op.type === "delete") {
+      // Recrea el archivo borrado
+      const newHandle = await dirHandle.getFileHandle(op.name, { create: true });
+      const writable = await newHandle.createWritable();
+      await writable.write(op.previousBlob);
+      await writable.close();
+
+      info.handle = newHandle;
+      info.deleted = op.previousDeleted;
+    } else if (op.type === "crop") {
+      const writable = await info.handle.createWritable();
+      await writable.write(op.previousBlob);
+      await writable.close();
+      info.deleted = op.previousDeleted;
+    }
+
+    currentIndex = op.fileIndex;
+    await showCurrent();
+  }
+
+  // Eventos de ratón (recorte manual de tamaño libre)
+  canvas.addEventListener("mousedown", (e) => {
+    if (!currentImage) return;
+    const rect = canvas.getBoundingClientRect();
+    dragStart = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    dragCurrent = { ...dragStart };
+    isDragging = true;
+    selectionCanceled = false;
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (!isDragging || selectionCanceled || !currentImage) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const x1 = dragStart.x;
+    const y1 = dragStart.y;
+    const x2 = x;
+    const y2 = y;
+
+    const sel = {
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      w: Math.abs(x2 - x1),
+      h: Math.abs(y2 - y1)
+    };
+    dragCurrent = sel;
+    drawImage(currentImage, sel);
+  });
+
+  canvas.addEventListener("mouseup", () => {
+    if (!isDragging) return;
+    isDragging = false;
+
+    if (selectionCanceled || !dragCurrent || dragCurrent.w < 5 || dragCurrent.h < 5) {
+      // Selección cancelada o muy pequeña
+      showCurrent().catch(console.error);
+      return;
+    }
+
+    applyManualCrop(dragCurrent).catch(console.error);
+    dragStart = null;
+    dragCurrent = null;
+  });
+
+  // Teclado
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+    const key = e.key.toLowerCase();
+
+    if (key === "s") {
+      e.preventDefault();
+      goNext().catch(console.error);
+    } else if (key === "d") {
+      e.preventDefault();
+      deleteCurrent().catch(console.error);
+    } else if (key === "x") {
+      e.preventDefault();
+      cropBottom10().catch(console.error);
+    } else if (key === "m") {
+      if (isDragging) {
+        selectionCanceled = true;
+        isDragging = false;
+        dragStart = null;
+        dragCurrent = null;
+        showCurrent().catch(console.error);
+      }
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goPrev().catch(console.error);
+    } else if (key === "z") {
+      e.preventDefault();
+      undo().catch(console.error);
+    }
+  });
+
+  // Pantalla inicial
+  renderEmpty("Pulsa el botón de arriba para elegir una carpeta.");
+})();
+</script>
+</body>
+</html>

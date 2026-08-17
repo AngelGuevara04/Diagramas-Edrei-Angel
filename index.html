@@ -1,0 +1,242 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centro de Diagramas</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <style>
+    :root {
+      --bg-1: #f4f7fb;
+      --bg-2: #e6edf8;
+      --ink: #0f172a;
+      --muted: #475569;
+      --primary: #0b5ed7;
+      --primary-strong: #0847a6;
+      --accent: #00a991;
+      --card: rgba(255, 255, 255, 0.82);
+      --card-border: rgba(148, 163, 184, 0.35);
+      --shadow: 0 20px 40px rgba(15, 23, 42, 0.14);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(11, 94, 215, 0.15), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(0, 169, 145, 0.18), transparent 30%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2));
+      display: flex;
+      justify-content: center;
+      padding: 30px 18px 40px;
+    }
+
+    .container {
+      width: min(980px, 100%);
+      animation: fadeIn 500ms ease-out;
+    }
+
+    .hero {
+      padding: 28px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--primary);
+      background: rgba(11, 94, 215, 0.12);
+      border: 1px solid rgba(11, 94, 215, 0.25);
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.7rem, 2.5vw, 2.4rem);
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 12px 0 0;
+      color: var(--muted);
+      max-width: 65ch;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 28px rgba(15, 23, 42, 0.13);
+      border-color: rgba(11, 94, 215, 0.3);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.95rem;
+      flex: 1;
+    }
+
+    .tool-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background-color 170ms ease, transform 170ms ease;
+    }
+
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(120deg, var(--primary), var(--primary-strong));
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(120deg, #0a56c2, #073f90);
+    }
+
+    .btn-ghost {
+      color: #243043;
+      background: #dde6f3;
+      cursor: not-allowed;
+    }
+
+    .soon {
+      font-size: 0.75rem;
+      color: #0f766e;
+      font-weight: 700;
+      background: rgba(0, 169, 145, 0.14);
+      border: 1px solid rgba(0, 169, 145, 0.24);
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+
+    .footer {
+      margin-top: 16px;
+      color: #5b687d;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 620px) {
+      body {
+        padding-top: 18px;
+      }
+
+      .hero {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <span class="badge">Panel principal</span>
+      <h1>Centro de herramientas de diagramas</h1>
+      <p class="subtitle">
+        Elige la herramienta con la que quieres trabajar. Este menú centraliza las opciones actuales y las funciones que se integrarán próximamente.
+      </p>
+
+      <div class="grid">
+        <article class="card">
+          <h2>Mapa conceptual</h2>
+          <p>Organiza ideas con relaciones jerárquicas claras y conexiones entre conceptos.</p>
+          <img class="tool-image" src="conceptual.png" alt="Vista previa de mapa conceptual" />
+          <a class="btn btn-primary" href="Mapa conceptual/visor/editor_mapa_conceptual.html">Abrir herramienta</a>
+        </article>
+
+        <article class="card">
+          <h2>Mapa mental</h2>
+          <p>Estructura ideas alrededor de un tema central con una vista rápida y visual.</p>
+          <img class="tool-image" src="mental.png" alt="Vista previa de mapa mental" />
+          <a class="btn btn-primary" href="Mapa mental/visor/editor_mapa_mental.html">Abrir herramienta</a>
+        </article>
+
+        <article class="card">
+          <h2>Cuadros sinópticos</h2>
+          <p>Vista resumida por niveles para organizar información por categorías y subcategorías.</p>
+          <a class="btn btn-primary" href="Cuadro sinoptico/visor/editor_cuadro_sinoptico.html">Abrir herramienta</a>
+        </article>
+
+        <article class="card">
+          <h2>Recortador de PDFs</h2>
+          <p>Herramienta para extraer y recortar secciones de documentos PDF de forma rápida.</p>
+          <a class="btn btn-primary" href="Recortador PDF/recortarSVG.html">Abrir herramienta</a>
+        </article>
+      </div>
+    </section>
+
+    <p class="footer">ITSM • Diagramas mejorado</p>
+  </main>
+</body>
+</html>
+
