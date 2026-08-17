@@ -279,7 +279,7 @@ def js_generate(data_str, config_dict):
       try {
         pyodide.globals.set("JS_CODE", code);
         pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
-        const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG.to_py())");
+        const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG)");
         const res = resProxy.toJs({ dict_converter: Object.fromEntries });
         resProxy.destroy();
 
@@ -387,7 +387,7 @@ def js_generate(data_str, config_dict):
             if (!pyReady) return;
             pyodide.globals.set("JS_CODE", editor.getValue());
             pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
-            const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG.to_py())");
+            const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG)");
             const res = resProxy.toJs({ dict_converter: Object.fromEntries });
             resProxy.destroy();
 
