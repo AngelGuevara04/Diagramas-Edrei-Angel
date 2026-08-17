@@ -221,6 +221,7 @@
         });
         if(!res.ok) throw new Error(await res.text());
         const xml = await res.text();
+        if(!xml.trim().startsWith("<")) throw new Error(xml);
         
         const iframe = document.getElementById('drawioIframe');
         iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: xml}), '*');

@@ -43,6 +43,17 @@ class ImageCandidatesReq(BaseModel):
 
 def parse_py_literal(text: str) -> Any:
     text = text.strip()
+    try:
+        tree = ast.parse(text)
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in ("concept_map", "mapa_ejemplo", "chart"):
+                        return ast.literal_eval(node.value)
+    except Exception:
+        pass
+    
+    # Fallback for simple literal evaluation
     if text.startswith("concept_map ="):
         text = text.split("=", 1)[1].strip()
     if text.startswith("mapa_ejemplo ="):
