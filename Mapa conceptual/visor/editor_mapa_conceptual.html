@@ -243,33 +243,67 @@
     function buildForm() {
        const form = document.getElementById("configForm");
        form.innerHTML = "";
+       
+       const grid = document.createElement("div");
+       grid.style.display = "grid";
+       grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(200px, 1fr))";
+       grid.style.gap = "12px";
+
        for(const key in configData) {
-          if(key === "PALETTE") continue;
-          const div = document.createElement("div");
-          div.style.marginBottom = "5px";
+          if(key === "PALETTE" || key === "IMAGES_URL_MAP") continue;
+          
+          const fieldDiv = document.createElement("div");
+          fieldDiv.style.display = "flex";
+          fieldDiv.style.flexDirection = "column";
+          fieldDiv.style.gap = "5px";
+
           const label = document.createElement("label");
-          label.innerText = key + ": ";
-          label.style.display = "inline-block";
-          label.style.width = "180px";
+          label.innerText = key;
+          label.style.fontSize = "12px";
+          label.style.fontWeight = "bold";
+          label.style.color = "#5b6878";
+
           const input = document.createElement("input");
           input.value = configData[key];
+          
           if(typeof configData[key] === "boolean") {
+              fieldDiv.style.flexDirection = "row";
+              fieldDiv.style.alignItems = "center";
+              label.style.marginRight = "10px";
               input.type = "checkbox";
               input.checked = configData[key];
+              input.style.cursor = "pointer";
               input.onchange = (e) => { configData[key] = e.target.checked; updatePreview(); };
+          } else if(typeof configData[key] === "string" && configData[key].startsWith("#") && (configData[key].length === 7 || configData[key].length === 4)) {
+              input.type = "color";
+              input.style.padding = "0";
+              input.style.height = "36px";
+              input.style.width = "100%";
+              input.style.border = "1px solid #d7dee8";
+              input.style.borderRadius = "4px";
+              input.style.cursor = "pointer";
+              input.onchange = (e) => {
+                  configData[key] = e.target.value;
+                  updatePreview();
+              };
           } else {
               input.type = "text";
+              input.style.padding = "8px";
+              input.style.border = "1px solid #d7dee8";
+              input.style.borderRadius = "4px";
+              input.style.fontSize = "13px";
               input.onchange = (e) => { 
                 let val = e.target.value;
-                if(!isNaN(val)) val = parseFloat(val);
+                if(!isNaN(val) && val.trim() !== "") val = parseFloat(val);
                 configData[key] = val; 
                 updatePreview(); 
               };
           }
-          div.appendChild(label);
-          div.appendChild(input);
-          form.appendChild(div);
+          fieldDiv.appendChild(label);
+          fieldDiv.appendChild(input);
+          grid.appendChild(fieldDiv);
        }
+       form.appendChild(grid);
     }
     buildForm();
 
