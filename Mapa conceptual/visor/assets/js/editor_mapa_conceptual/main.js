@@ -82,6 +82,31 @@ export function bootEditorMapaConceptual() {
   state.currentConfig = normalizeConfig(constants.DEFAULT_CONFIG, constants.DEFAULT_CONFIG);
   dom.configEditor.value = jsToPythonLiteral(state.currentConfig);
   dom.conceptEditor.value = constants.fallbackConceptMap;
+
+  // Initialize CodeMirror and bind it to the live auto-preview
+  const cmEditor = window.CodeMirror.fromTextArea(dom.conceptEditor, {
+    mode: "python",
+    theme: "dracula",
+    lineNumbers: true,
+    viewportMargin: Infinity
+  });
+  
+  const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+  Object.defineProperty(dom.conceptEditor, 'value', {
+    get: function() {
+      return cmEditor.getValue();
+    },
+    set: function(val) {
+      if (cmEditor.getValue() !== val) {
+        cmEditor.setValue(val);
+      }
+      originalDescriptor.set.call(this, val);
+    }
+  });
+
+  cmEditor.on("change", () => {
+    scheduleAutoPreview();
+  });
   configFormApi.renderConfigForm();
 
   dom.pyFileInput.addEventListener("change", async () => {

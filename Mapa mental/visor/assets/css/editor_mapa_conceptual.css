@@ -890,3 +890,13 @@ input[type="file"] {
   flex: 1;
 }
 
+
+/* CodeMirror Integration */
+.CodeMirror {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 13px;
+  height: 400px;
+  margin-top: 1rem;
+}

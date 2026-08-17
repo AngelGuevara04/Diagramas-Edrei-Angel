@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editor de mapa mental (CONFIG + mapa_ejemplo)</title>
   <link rel="stylesheet" href="./assets/css/editor_mapa_conceptual.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
 </head>
 
 <body>
@@ -170,7 +172,7 @@
         <div class="image-review-toolbar">
           <div class="image-review-counter" id="imageReviewCounter">Sin imagenes en sesion.</div>
           <div class="image-review-toolbar-actions">
-            <button class="btn-ghost" id="btnImageReviewPrev" type="button">Anterior (←)</button>
+            <button class="btn-ghost" id="btnImageReviewPrev" type="button">Anterior (?)</button>
             <button class="btn-ghost" id="btnImageReviewNext" type="button">Siguiente (S)</button>
             <button class="btn-ghost" id="btnImageReviewRefresh" type="button">Refrescar imagen</button>
             <button class="btn-ghost" id="btnOpenPendingImages" type="button">Imagenes pendientes</button>
@@ -188,7 +190,7 @@
             <h3>Atajos y acciones</h3>
             <ul>
               <li><b>S</b>: siguiente imagen.</li>
-              <li><b>←</b>: imagen anterior.</li>
+              <li><b>?</b>: imagen anterior.</li>
               <li><b>D</b>: borrar archivo actual y avanzar.</li>
               <li><b>X</b>: recortar 10% inferior, guardar y avanzar.</li>
               <li><b>Ctrl+V</b>: reemplazar imagen actual con el portapapeles.</li>
@@ -268,6 +270,8 @@
   <script src="https://viewer.diagrams.net/js/viewer-static.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
   <script type="module" src="./assets/js/editor_mapa_conceptual.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
 </body>
 
 </html>
