@@ -60,7 +60,17 @@ def parse_py_literal(text: str) -> Any:
         text = text.split("=", 1)[1].strip()
     if text.startswith("chart ="):
         text = text.split("=", 1)[1].strip()
-    return ast.literal_eval(text)
+        
+    try:
+        res = ast.literal_eval(text)
+        if isinstance(res, str):
+            try:
+                res = ast.literal_eval(res.strip())
+            except Exception:
+                pass
+        return res
+    except Exception:
+        return text
 
 # ----- IA LOGIC -----
 def extract_first_json(text: str) -> Any:
