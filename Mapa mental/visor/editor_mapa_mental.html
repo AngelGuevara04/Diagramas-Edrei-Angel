@@ -42,6 +42,7 @@
           <button class="tab-btn active" data-target="editorTab">Editor</button>
           <button class="tab-btn" data-target="visualTab">Diseño</button>
           <button class="tab-btn" data-target="imagesTab">Imágenes</button>
+          <button class="tab-btn" data-target="iaTab">Asistente IA</button>
         </div>
 
         <div id="editorTab" class="tab-content active">
@@ -69,6 +70,20 @@
             <div id="imageStatus" style="margin-top: 10px; color: #e67c4f;"></div>
           </div>
           <div id="imageNodesList"></div>
+        </div>
+
+        <!-- PESTAÑA IA -->
+        <div id="iaTab" class="tab-content">
+          <div class="group">
+            <div class="group-head">
+              <h2>Asistente IA (Gemini Gem)</h2>
+            </div>
+            <p style="font-size: 13px; color: #5b6878; margin-bottom: 12px; line-height: 1.4;">
+              Haz clic en el botón para abrir una conversación con el Gem especializado en mapas mentales.
+              Pídele la estructura que necesitas y luego copia el código que te dé y pégalo en la pestaña <strong>Editor de Código</strong>.
+            </p>
+            <button class="btn-primary" style="width: 100%" id="btnOpenGemini">Abrir Asistente (Gemini)</button>
+          </div>
         </div>
 
       </div>
@@ -219,6 +234,17 @@
        }
     }
     buildForm();
+
+    // IA Logic (Gemini Gem link)
+    if(document.getElementById("btnOpenGemini")) {
+      document.getElementById("btnOpenGemini").addEventListener("click", () => {
+        window.open(
+          "https://gemini.google.com/gem/1RxilJOzqXHsfFv39rSkvbjL4qyM-r-XS?usp=sharing",
+          "_blank",
+          "noopener,noreferrer"
+        );
+      });
+    }
 
     window.addEventListener('message', function(e) {
         if (e.data == 'ready') {

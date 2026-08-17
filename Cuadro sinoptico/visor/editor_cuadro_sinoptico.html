@@ -36,6 +36,7 @@
         <div class="tabs">
           <button class="tab-btn active" data-target="editorTab">Editor de Código</button>
           <button class="tab-btn" data-target="visualTab">Diseño Visual</button>
+          <button class="tab-btn" data-target="iaTab">Asistente IA</button>
         </div>
 
         <div id="editorTab" class="tab-content active">
@@ -48,6 +49,20 @@
               <h2>CONFIG visual</h2>
             </div>
             <div id="configForm" class="config-form"></div>
+          </div>
+        </div>
+
+        <!-- PESTAÑA IA -->
+        <div id="iaTab" class="tab-content">
+          <div class="group">
+            <div class="group-head">
+              <h2>Asistente IA (Gemini Gem)</h2>
+            </div>
+            <p style="font-size: 13px; color: #5b6878; margin-bottom: 12px; line-height: 1.4;">
+              Haz clic en el botón para abrir una conversación con el Gem especializado en cuadros sinópticos.
+              Pídele la estructura que necesitas y luego copia el código que te dé y pégalo en la pestaña <strong>Editor de Código</strong>.
+            </p>
+            <button class="btn-primary" style="width: 100%" id="btnOpenGemini">Abrir Asistente (Gemini)</button>
           </div>
         </div>
 
@@ -157,6 +172,7 @@
        const form = document.getElementById("configForm");
        form.innerHTML = "";
        for(const key in configData) {
+          if(key === "PALETTE") continue;
           const div = document.createElement("div");
           div.style.marginBottom = "5px";
           const label = document.createElement("label");
@@ -184,6 +200,17 @@
        }
     }
     buildForm();
+
+    // IA Logic (Gemini Gem link)
+    if(document.getElementById("btnOpenGemini")) {
+      document.getElementById("btnOpenGemini").addEventListener("click", () => {
+        window.open(
+          "https://gemini.google.com/gem/1chS06YwWqIWLPBV7rZFxN6IRbHIJfcsp?usp=sharing",
+          "_blank",
+          "noopener,noreferrer"
+        );
+      });
+    }
 
     window.addEventListener('message', function(e) {
         if (e.data == 'ready') {

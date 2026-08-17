@@ -1,94 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Editor de mapa conceptual</title>
-  <link rel="stylesheet" href="./assets/css/editor_mapa_conceptual.css">
-  <!-- CodeMirror CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
-  <style>
-    .tabs { display: flex; border-bottom: 1px solid #d7dee8; margin-bottom: 10px; }
-    .tab-btn { background: transparent; border: none; color: #5b6878; padding: 10px 20px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; font-weight: 600; }
-    .tab-btn.active { color: #0b7a6b; border-bottom: 2px solid #0b7a6b; }
-    .tab-content { display: none; height: calc(100% - 50px); overflow-y: auto; }
-    .tab-content.active { display: block; }
-    .CodeMirror { height: 100%; font-size: 14px; border-radius: 4px; }
-    #editorTabContent { height: 60vh; }
-    .export-btn { background-color: #0b7a6b; color: white; margin-left: 10px; }
-  </style>
-</head>
-
-<body>
-  <div class="app">
-    <section class="panel left">
-      <div class="header">
-        <h1>Editor mapa conceptual</h1>
-        <p>Edita el código o la configuración, la vista previa se actualizará automáticamente.</p>
-      </div>
-
-      <div class="content">
-        <div class="toolbar toolbar-main">
-          <button class="btn-primary" id="btnSaveAs">Guardar .drawio...</button>
-        </div>
-
-        <div class="tabs">
-          <button class="tab-btn active" data-target="editorTab">Editor de Código</button>
-          <button class="tab-btn" data-target="visualTab">Diseño Visual</button>
-          <button class="tab-btn" data-target="iaTab">Asistente IA</button>
-        </div>
-
-        <!-- PESTAÑA DE CODIGO -->
-        <div id="editorTab" class="tab-content active">
-          <div id="editorTabContent"></div>
-        </div>
-
-        <!-- PESTAÑA VISUAL -->
-        <div id="visualTab" class="tab-content">
-          <div class="group">
-            <div class="group-head">
-              <h2>CONFIG visual</h2>
-              <button class="btn-ghost" id="btnRandomizeStyle">Randomizar estilo</button>
-            </div>
-            <div id="configForm" class="config-form"></div>
-          </div>
-        </div>
-
-        <!-- PESTAÑA IA -->
-        <div id="iaTab" class="tab-content">
-          <div class="group">
-            <div class="group-head">
-              <h2>Asistente IA (Gemini Gem)</h2>
-            </div>
-            <p style="font-size: 13px; color: #5b6878; margin-bottom: 12px; line-height: 1.4;">
-              Haz clic en el botón para abrir una conversación con el Gem especializado en mapas conceptuales.
-              Pídele la estructura que necesitas y luego copia el código que te dé y pégalo en la pestaña <strong>Editor de Código</strong>.
-            </p>
-            <button class="btn-primary" style="width: 100%" id="btnOpenGemini">Abrir Asistente (Gemini)</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="panel preview">
-      <div class="preview-head">
-        <h2>Vista previa draw.io</h2>
-        <div class="meta" id="previewMeta">Sincronizado</div>
-      </div>
-      <div id="graph-container">
-        <iframe id="drawioIframe" src="https://viewer.diagrams.net/?client=1&ui=min" style="width: 100%; height: 100%; border: none;"></iframe>
-      </div>
-    </section>
-  </div>
-
-  <!-- Scripts CodeMirror -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
-  
-  <script>
     const defaultCode = `concept_map = [
     {
         "titulo_principal": "El Sistema Solar",
@@ -230,13 +140,35 @@
       }
     }
 
-    // IA Logic (Gemini Gem link)
-    document.getElementById("btnOpenGemini").addEventListener("click", () => {
-      window.open(
-        "https://gemini.google.com/gem/1oaIjyTuFvjl6PP-qwCkAadrCzKhTJzDF?usp=sharing",
-        "_blank",
-        "noopener,noreferrer"
-      );
+    // IA Logic
+    document.getElementById("btnApplyGemini").addEventListener("click", async () => {
+      const prompt = document.getElementById("geminiPrompt").value;
+      if(!prompt) return;
+      const status = document.getElementById("iaStatus");
+      status.innerText = "Pensando...";
+      
+      try {
+        const res = await fetch("/api/ia/concept-map", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instruction: prompt,
+            concept_map: editor.getValue()
+          })
+        });
+        const data = await res.json();
+        if(data.ok) {
+           const jsonStr = JSON.stringify(data.concept_map, null, 4);
+           // Convert JSON format back to Python tuples for UI
+           let pythonStr = "concept_map = " + jsonStr.replace(/\\[null,/g, "(None,");
+           editor.setValue(pythonStr);
+           status.innerText = "¡Aplicado!";
+        } else {
+           status.innerText = "Error: " + data.error;
+        }
+      } catch (err) {
+        status.innerText = "Error de red.";
+      }
     });
 
     // Form builder logic
@@ -301,6 +233,4 @@
         } catch(e) { console.error(e); }
     });
 
-  </script>
-</body>
-</html>
+  
