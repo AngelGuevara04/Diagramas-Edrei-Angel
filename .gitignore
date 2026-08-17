@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+ImagenesMapaMental/
+ImagenesCuadroSinoptico/
+ImagenesMapaConceptual/
+_review_candidates/
