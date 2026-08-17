@@ -1,7 +1,2 @@
 fastapi
 uvicorn
-pydantic
-duckduckgo-search
-requests
-python-dotenv
-Pillow

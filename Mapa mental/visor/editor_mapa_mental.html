@@ -42,7 +42,6 @@
         <div class="tabs">
           <button class="tab-btn active" data-target="editorTab">Editor</button>
           <button class="tab-btn" data-target="visualTab">Diseño</button>
-          <button class="tab-btn" data-target="imagesTab">Imágenes</button>
           <button class="tab-btn" data-target="iaTab">Asistente IA</button>
         </div>
 
@@ -57,20 +56,6 @@
             </div>
             <div id="configForm" class="config-form"></div>
           </div>
-        </div>
-
-        <div id="imagesTab" class="tab-content">
-          <div class="image-controls">
-            <label>Proveedor:</label>
-            <select id="imageProvider">
-                <option value="ddg">DuckDuckGo</option>
-                <option value="bing">Bing</option>
-            </select>
-            <br><br>
-            <button class="btn-primary" id="btnAutoAssignImages">Auto-asignar imágenes a nodos principales</button>
-            <div id="imageStatus" style="margin-top: 10px; color: #e67c4f;"></div>
-          </div>
-          <div id="imageNodesList"></div>
         </div>
 
         <!-- PESTAÑA IA -->
@@ -103,6 +88,8 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+  <!-- Script Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
   
   <script>
     const defaultCode = `mapa_ejemplo = {
@@ -172,6 +159,71 @@
       indentUnit: 4,
     });
 
+    let pyodide = null;
+    let pyReady = false;
+
+    async function initPyodide() {
+        if (pyReady) return;
+        const meta = document.getElementById("previewMeta");
+        meta.innerText = "Inicializando Python en el navegador...";
+        try {
+            pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install("Pillow");
+
+            const res = await fetch("../../Mapa mental/codigo/Scripts/Mapas_mentales.py");
+            if (!res.ok) throw new Error("No se pudo cargar Mapas_mentales.py");
+            const scriptCode = await res.text();
+            const safeScript = scriptCode.replace(/if __name__ == "__main__":/g, "if False:");
+            
+            const wrapper = `
+import ast
+import traceback
+
+${safeScript}
+
+def js_generate(data_str, config_dict):
+    try:
+        tree = ast.parse(data_str)
+        data = None
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in ("concept_map", "mapa_ejemplo", "chart"):
+                        data = ast.literal_eval(node.value)
+                        break
+        
+        if data is None:
+            for prefix in ["concept_map =", "mapa_ejemplo =", "chart ="]:
+                if data_str.strip().startswith(prefix):
+                    data_str = data_str.split("=", 1)[1].strip()
+                    break
+            
+            res = ast.literal_eval(data_str)
+            if isinstance(res, str):
+                try:
+                    res = ast.literal_eval(res.strip())
+                except Exception:
+                    pass
+            data = res
+            
+        config_dict["RETURN_XML"] = True
+        xml = generar_mapa_mental(data, config_dict)
+        return {"ok": True, "xml": xml}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "traceback": traceback.format_exc()}
+`;
+            pyodide.runPython(wrapper);
+            pyReady = true;
+            meta.innerText = "Listo";
+            updatePreview();
+        } catch (e) {
+            meta.innerText = "Error cargando motor";
+            console.error(e);
+        }
+    }
+
     let debounceTimer;
     editor.on("change", () => {
       clearTimeout(debounceTimer);
@@ -179,21 +231,19 @@
     });
 
     async function updatePreview() {
+      if (!pyReady) return;
       const code = editor.getValue();
       const meta = document.getElementById("previewMeta");
       meta.innerText = "Generando...";
       try {
-        const res = await fetch("/api/generate/mind", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            map_data_str: code,
-            config: configData
-          })
-        });
-        if(!res.ok) throw new Error(await res.text());
-        const xml = await res.text();
-        if(!xml.trim().startsWith("<")) throw new Error(xml);
+        pyodide.globals.set("JS_CODE", code);
+        pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
+        const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG.to_py())");
+        const res = resProxy.toJs({ dict_converter: Object.fromEntries });
+        resProxy.destroy();
+
+        if (!res.ok) throw new Error(res.error);
+        const xml = res.xml;
         
         const iframe = document.getElementById('drawioIframe');
         iframe.contentWindow.postMessage(JSON.stringify({action: 'load', xml: xml}), '*');
@@ -203,6 +253,8 @@
         console.error(err);
       }
     }
+
+    window.addEventListener('load', initPyodide);
 
     // Form builder logic
     function buildForm() {
@@ -292,22 +344,22 @@
     // Guardar .drawio
     document.getElementById("btnSaveAs").addEventListener("click", async () => {
         try {
-            const res = await fetch("/api/generate/mind", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                map_data_str: editor.getValue(),
-                config: configData
-              })
-            });
-            const xml = await res.text();
+            if (!pyReady) return;
+            pyodide.globals.set("JS_CODE", editor.getValue());
+            pyodide.globals.set("JS_CONFIG", pyodide.toPy(configData));
+            const resProxy = pyodide.runPython("js_generate(JS_CODE, JS_CONFIG.to_py())");
+            const res = resProxy.toJs({ dict_converter: Object.fromEntries });
+            resProxy.destroy();
+
+            if (!res.ok) throw new Error(res.error);
+            const xml = res.xml;
             const blob = new Blob([xml], { type: "application/xml" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
             a.download = "Mapa_Mental.drawio";
             a.click();
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error(e); alert("Error al guardar: " + e.message); }
     });
 
     // Pegar del portapapeles
@@ -318,57 +370,6 @@
         } catch (err) {
             alert("No se pudo leer el portapapeles. Da permisos o usa Ctrl+V dentro del editor.");
         }
-    });
-
-    // Images logic
-    document.getElementById("btnAutoAssignImages").addEventListener("click", async () => {
-        const status = document.getElementById("imageStatus");
-        status.innerText = "Extrayendo nodos...";
-        
-        // Very basic regex to find keys in dict
-        const code = editor.getValue();
-        const matches = code.match(/"([^"]+)"\s*:/g);
-        if(!matches) { status.innerText = "No se encontraron nodos principales."; return; }
-        
-        let nodes = matches.map(m => m.replace(/"/g, '').replace(':', '').trim());
-        const provider = document.getElementById("imageProvider").value;
-        const listDiv = document.getElementById("imageNodesList");
-        listDiv.innerHTML = "";
-        
-        status.innerText = "Buscando imágenes...";
-        configData["IMAGES_URL_MAP"] = {};
-        
-        for(let node of nodes) {
-            try {
-                const res = await fetch("/api/images/candidates", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ provider: provider, query: node + " icon png" })
-                });
-                const data = await res.json();
-                if(data.ok && data.candidates.length > 0) {
-                    const url = data.candidates[0].url || data.candidates[0];
-                    configData["IMAGES_URL_MAP"][node.toLowerCase()] = {
-                        uri: url,
-                        height: 70
-                    };
-                    
-                    const div = document.createElement("div");
-                    div.className = "image-node";
-                    div.innerHTML = \`
-                        <div style="display:flex; align-items:center;">
-                            <img src="\${url}" class="image-preview">
-                            <b>\${node}</b>
-                        </div>
-                        <button class="btn-ghost" onclick="this.parentElement.remove(); delete configData['IMAGES_URL_MAP']['\${node.toLowerCase()}']; updatePreview();">Remover</button>
-                    \`;
-                    listDiv.appendChild(div);
-                }
-            } catch(e) { console.error("Error fetching image for", node); }
-        }
-        
-        status.innerText = "¡Listo!";
-        updatePreview();
     });
 
   </script>
