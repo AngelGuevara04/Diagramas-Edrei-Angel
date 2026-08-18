@@ -1,7 +1,7 @@
-import { createConfigFormApi } from "./config-form.js";
+﻿import { createConfigFormApi } from "./config-form.js";
 import { createFileActionsApi } from "./file-actions.js";
 import { createPreviewApi } from "./preview.js";
-import { createRuntimeApi } from "./runtime.js";
+import { createRuntimeApi } from "./runtime.js?v=3";
 import { constants, dom, state } from "./state.js";
 import { closeAdvancedModal, openAdvancedModal, setStatus as setStatusBase } from "./ui.js";
 import { jsToPythonLiteral, normalizeConfig } from "./utils.js";
@@ -274,4 +274,5 @@ export function bootEditorMapaConceptual() {
     runtimeApi.initPy();
   });
 }
+
 
