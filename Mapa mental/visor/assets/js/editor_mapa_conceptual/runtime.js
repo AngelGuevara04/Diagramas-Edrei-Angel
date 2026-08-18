@@ -1,4 +1,4 @@
-﻿import { jsToPythonLiteral, normalizeConfig } from "./utils.js";
+import { jsToPythonLiteral, normalizeConfig } from "./utils.js";
 
 export function createRuntimeApi({
   dom,
@@ -2118,8 +2118,7 @@ window.addEventListener('focus',()=>{if(dirHandle) updateAll();});
   async function runPuenteLocalSearch(requestPayload, maxLabels) {
     const modalOpened = openBingSearchModal(0, "Puente Local (DuckDuckGo)");
     try {
-      // 1. Obtener labels del mapa
-      const linkResp = await fetch(/api/images/google-links?mind_map_text=);
+      const linkResp = await fetch(`/api/images/google-links?mind_map_text=${encodeURIComponent(requestPayload.mind_map_text)}`);
       const linkData = await linkResp.json();
       if (!linkData.ok) throw new Error(linkData.error || "No se pudieron obtener los nodos.");
       let labels = linkData.labels;
@@ -2144,8 +2143,8 @@ window.addEventListener('focus',()=>{if(dirHandle) updateAll();});
         const label = labels[i];
         let urlToDownload = null;
         try {
-          const query = encodeURIComponent(${label} .trim());
-          const bridgeResp = await fetch(http://localhost:8765/api/search?q=&provider=ddg);
+          const query = encodeURIComponent(`${label} ${rootContext}`.trim());
+          const bridgeResp = await fetch(`http://localhost:8765/api/search?q=${query}&provider=ddg`);
           const bridgeData = await bridgeResp.json();
           if (bridgeData.ok && bridgeData.results && bridgeData.results.length > 0) {
              urlToDownload = bridgeData.results[0];
